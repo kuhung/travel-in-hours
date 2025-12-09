@@ -8,7 +8,8 @@ import { MapWrapper, MapLegend } from '@/components/Map';
 import { 
   CitySelector, 
   TravelModeSelector, 
-  ShareButton 
+  ShareButton,
+  ResultToolbar 
 } from '@/components/Controls';
 import { ErrorMessage, WelcomeGuide } from '@/components/UI';
 import { useIsochrones, useShareParams } from '@/hooks';
@@ -214,47 +215,26 @@ function IsochroneAppContent() {
         )}
       </div>
       
-      {/* 折叠后的状态显示 / 重新打开按钮 (右上角折叠效果) */}
-      <button 
-        onClick={() => {
-          setIsPanelOpen(true);
-          // 重新打开面板时不自动清除数据，允许用户在查看结果时打开面板进行分享
-        }}
-        className={`
-            absolute top-4 right-4 z-30 
-            bg-white/90 backdrop-blur shadow-lg border border-white/20
-            text-gray-700 hover:bg-white hover:text-emerald-600
-            transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-            flex items-center gap-3 overflow-hidden
-            ${!isPanelOpen 
-              ? 'translate-y-0 opacity-100 scale-100 py-3 px-4 rounded-xl' 
-              : 'translate-y-[-120%] opacity-0 scale-90 py-0 px-0 rounded-full h-0 w-0'
-            }
-        `}
-      >
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 shrink-0">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-        </div>
-        <div className="flex flex-col items-start whitespace-nowrap">
-            <span className="text-sm font-bold">编辑查询</span>
-            <span className="text-[10px] text-gray-500 opacity-80">
-                {selectedLandmark?.name.slice(0, 6)} · {profile === 'driving-car' ? '驾车' : profile === 'cycling-regular' ? '骑行' : '步行'}
-            </span>
-        </div>
-      </button>
+      {/* 结果浏览模式下的工具栏：编辑 + 分享 */}
+      {isResultView && (
+        <ResultToolbar
+          landmark={selectedLandmark}
+          profile={profile}
+          rangeMinutes={rangeMinutes}
+          onEdit={() => setIsPanelOpen(true)}
+        />
+      )}
 
-      {/* 纯图标开关 (当非ResultMode且Panel关闭时显示，作为备份入口) */}
+      {/* 非结果模式但面板关闭时的打开按钮 */}
       {!isResultView && !isPanelOpen && (
-          <button 
-            onClick={() => setIsPanelOpen(true)}
-            className="absolute top-4 right-4 z-20 p-2.5 rounded-xl bg-white/90 backdrop-blur shadow-lg text-gray-600 hover:bg-white transition-all"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+        <button 
+          onClick={() => setIsPanelOpen(true)}
+          className="absolute top-4 right-4 z-20 p-2.5 rounded-xl bg-white/90 backdrop-blur shadow-lg text-gray-600 hover:bg-white transition-all"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
       )}
 
     </div>
