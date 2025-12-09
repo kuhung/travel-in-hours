@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { CityLandmark, IsochroneFeature, TravelProfile } from '@/types';
 import { getColorForRange } from '@/data/isochrone-config';
+import { wgs84ToGcj02, gcj02ToWgs84 } from '@/lib/coord-transform';
 
 interface IsochroneMapProps {
   landmark: CityLandmark | null;
@@ -69,12 +70,44 @@ export default function IsochroneMap({
     });
   }, []);
   
-  // 计算地图中心和缩放级别
-  const center: [number, number] = landmark 
-    ? [landmark.coordinates[1], landmark.coordinates[0]]
-    : [39.9055, 116.3912]; // 默认北京 [lat, lng]
+  // 计算地图中心和缩放级别 (转换为 GCJ-02)
+  const center: [number, number] = useMemo(() => {
+    if (!landmark) return [39.909187, 116.397451]; // 默认北京天安门 (GCJ-02)
+    const [lng, lat] = wgs84ToGcj02(landmark.coordinates[0], landmark.coordinates[1]);
+    return [lat, lng];
+  }, [landmark]);
   
-  const zoom = landmark ? 10 : 5;
+  const zoom = landmark ? 11 : 5;
+
+  // 转换等时圈数据为 GCJ-02
+  const transformedIsochrones = useMemo(() => {
+    return isochrones.map(feature => {
+      const newFeature = JSON.parse(JSON.stringify(feature));
+      const geometry = newFeature.geometry;
+      
+      const transformPoint = (coord: number[]) => {
+        return wgs84ToGcj02(coord[0], coord[1]);
+      };
+
+      if (geometry.type === 'Polygon') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        geometry.coordinates = geometry.coordinates.map((ring: any) => 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ring.map((coord: any) => transformPoint(coord))
+        );
+      } else if (geometry.type === 'MultiPolygon') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        geometry.coordinates = geometry.coordinates.map((polygon: any) => 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          polygon.map((ring: any) => 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ring.map((coord: any) => transformPoint(coord))
+          )
+        );
+      }
+      return newFeature;
+    });
+  }, [isochrones]);
 
   // GeoJSON 样式函数
   const getStyle = useCallback((feature: GeoJSON.Feature | undefined) => {
@@ -120,13 +153,15 @@ export default function IsochroneMap({
 
   // 排序后的等时圈数据
   const sortedIsochrones = useMemo(() => {
-    return [...isochrones].sort((a, b) => b.properties.value - a.properties.value);
-  }, [isochrones]);
+    return [...transformedIsochrones].sort((a, b) => b.properties.value - a.properties.value);
+  }, [transformedIsochrones]);
 
-  // 地标位置
-  const markerPosition: [number, number] | null = landmark 
-    ? [landmark.coordinates[1], landmark.coordinates[0]] 
-    : null;
+  // 地标位置 (转换为 GCJ-02)
+  const markerPosition: [number, number] | null = useMemo(() => {
+    if (!landmark) return null;
+    const [lng, lat] = wgs84ToGcj02(landmark.coordinates[0], landmark.coordinates[1]);
+    return [lat, lng];
+  }, [landmark]);
 
   if (!isClient || !MapComponents) {
     return (
@@ -150,8 +185,8 @@ export default function IsochroneMap({
       zoomControl={true}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | 数据来源: OpenRouteService'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'
+        url="https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
       />
       
       <MapControllerWrapper 
@@ -211,7 +246,9 @@ function MapControllerWrapper({
     if (!onMapClick) return;
     
     const handleClick = (e: L.LeafletMouseEvent) => {
-      onMapClick(e.latlng.lat, e.latlng.lng);
+      // 将点击的 GCJ-02 坐标转回 WGS-84
+      const [lng, lat] = gcj02ToWgs84(e.latlng.lng, e.latlng.lat);
+      onMapClick(lat, lng);
     };
     
     map.on('click', handleClick);

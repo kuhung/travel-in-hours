@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   
   // 环境变量
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    // NEXT_PUBLIC_APP_URL 由系统环境或 .env 文件提供
   },
 };
 

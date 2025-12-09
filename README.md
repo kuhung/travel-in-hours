@@ -38,7 +38,8 @@ cp .env.example .env.local
 3. 编辑 `.env.local`:
 ```env
 ORS_API_KEY=your_api_key_here
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# 可选：指定应用 URL，默认自动识别
+# NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ### 启动开发服务器
@@ -61,7 +62,7 @@ npm run dev
 2. 在 Vercel 中导入项目
 3. 配置环境变量:
    - `ORS_API_KEY`: OpenRouteService API Key
-   - `NEXT_PUBLIC_APP_URL`: 你的应用 URL
+   - `NEXT_PUBLIC_APP_URL` (可选): 你的应用 URL，用于生成分享链接等
 
 ## 🏗️ 技术栈
 
