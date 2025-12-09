@@ -34,6 +34,8 @@ async function fetchIsochronesFromAPI(
     headers: {
       'Content-Type': 'application/json',
       'Authorization': apiKey,
+      'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
+      'User-Agent': 'TravelIn3HoursApp/1.0',
     },
     body: JSON.stringify(requestBody),
   });
