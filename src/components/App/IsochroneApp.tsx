@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { CityLandmark, TravelProfile } from '@/types';
 import { defaultTimeRanges } from '@/data/isochrone-config';
 import { getLandmarkById } from '@/data/landmarks';
-import { MapWrapper } from '@/components/Map';
+import { MapWrapper, MapLegend } from '@/components/Map';
 import { 
   CitySelector, 
   TravelModeSelector, 
@@ -24,13 +24,13 @@ function IsochroneAppContent() {
   const [rangeMinutes] = useState<number[]>(defaultTimeRanges);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [isMinimalMap, setIsMinimalMap] = useState(false);
+  const [isResultMode, setIsResultMode] = useState(false);
   
   // 等时圈数据
   const { 
     isochrones, 
     loading, 
     error, 
-    fromCache,
     fetchIsochrones, 
     clearIsochrones,
     clearError 
@@ -46,6 +46,7 @@ function IsochroneAppContent() {
     if (shareParams.hasParams) {
       if (shareParams.landmark) setSelectedLandmark(shareParams.landmark);
       setProfile(shareParams.profile);
+      // 如果有分享参数，可能也想直接进入结果模式，但目前逻辑是等待用户点击生成
     }
   }, [shareParams]);
 
@@ -58,12 +59,19 @@ function IsochroneAppContent() {
       profile,
       rangeMinutes
     );
+    
+    // 生成成功后，进入结果模式（折叠面板）
+    setIsResultMode(true);
+    setIsPanelOpen(false); 
   }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones]);
 
-  // 当参数改变时自动清除结果，但不自动重新生成，以免过多请求
-  // 用户需要点击生成按钮
+  // 当参数改变时自动清除结果
   useEffect(() => {
-    clearIsochrones();
+    if (isochrones.length > 0) {
+      clearIsochrones();
+      setIsResultMode(false);
+      setIsPanelOpen(true);
+    }
   }, [selectedLandmark, profile, clearIsochrones]);
 
   return (
@@ -79,10 +87,15 @@ function IsochroneAppContent() {
         />
       </div>
 
-      {/* 地图样式切换按钮 */}
+      {/* 图例 - 仅在有结果时显示 */}
+      {isochrones.length > 0 && (
+        <MapLegend rangeMinutes={rangeMinutes} />
+      )}
+
+      {/* 地图样式切换按钮 - 调整位置避免遮挡 */}
       <button
         onClick={() => setIsMinimalMap(!isMinimalMap)}
-        className="absolute bottom-24 right-4 z-10 bg-white/90 backdrop-blur p-2 rounded-lg shadow-lg hover:bg-white transition-all text-gray-600"
+        className="absolute bottom-24 left-4 md:bottom-8 md:left-auto md:right-4 z-10 bg-white/90 backdrop-blur p-2 rounded-lg shadow-lg hover:bg-white transition-all text-gray-600"
         title={isMinimalMap ? "切换标准地图" : "切换简约地图"}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +108,7 @@ function IsochroneAppContent() {
       </button>
 
       {/* 顶部标题 - 极简风格 */}
-      <div className="absolute top-4 left-4 z-10 pointer-events-none">
+      <div className={`absolute top-4 left-4 z-10 pointer-events-none transition-opacity duration-300 ${isResultMode ? 'opacity-0 md:opacity-100' : 'opacity-100'}`}>
          <h1 className="text-2xl font-bold text-gray-800 drop-shadow-sm flex items-center gap-2">
             <span className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white shadow-emerald-500/30 shadow-lg">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,30 +122,30 @@ function IsochroneAppContent() {
       {/* 控制面板 - 悬浮卡片 */}
       <div 
         className={`
-          fixed bottom-0 left-0 right-0 z-20 transition-transform duration-300 ease-in-out
+          fixed bottom-0 left-0 right-0 z-20 transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1)
           md:absolute md:top-4 md:right-4 md:bottom-auto md:left-auto md:w-80
           ${isPanelOpen 
-            ? 'translate-y-0 md:translate-x-0' 
-            : 'translate-y-full md:translate-y-0 md:translate-x-[calc(100%+1rem)]'
+            ? 'translate-y-0 opacity-100' 
+            : 'translate-y-[120%] opacity-0 pointer-events-none'
           }
         `}
       >
         <div className={`
           bg-white/90 backdrop-blur-md shadow-xl border border-white/20 p-5 overflow-y-auto
-          w-full rounded-t-2xl max-h-[70vh]
+          w-full rounded-t-2xl max-h-[85vh]
           md:rounded-2xl md:max-h-[calc(100vh-2rem)]
         `}>
-           {/* 面板开关 (Mobile/Desktop toggle handled by parent div position, but we need a button to reopen if closed) */}
-           
-           {/* Mobile Close Button */}
-           <button
-             onClick={() => setIsPanelOpen(false)}
-             className="absolute top-2 right-2 p-2 rounded-full bg-gray-100/50 text-gray-500 hover:bg-gray-100 md:hidden"
-           >
-             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-             </svg>
-           </button>
+           {/* Mobile Close Button - 仅在非结果模式下显示，方便用户暂时收起 */}
+           {!isResultMode && (
+             <button
+               onClick={() => setIsPanelOpen(false)}
+               className="absolute top-2 right-2 p-2 rounded-full bg-gray-100/50 text-gray-500 hover:bg-gray-100 md:hidden"
+             >
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+               </svg>
+             </button>
+           )}
 
            <div className="space-y-6">
               {/* 地点选择 */}
@@ -174,16 +187,6 @@ function IsochroneAppContent() {
               </section>
 
               <div className="border-t border-gray-100 pt-4">
-                 {/* 时间范围说明 (简化版) */}
-                 <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
-                    <span>显示范围：</span>
-                    <div className="flex gap-2">
-                       <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-300 border border-green-600/20"></span>15分</span>
-                       <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-200 border border-yellow-600/20"></span>30分</span>
-                       <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-300 border border-red-600/20"></span>60分</span>
-                    </div>
-                 </div>
-
                  <ShareButton
                   landmark={selectedLandmark}
                   profile={profile}
@@ -199,7 +202,7 @@ function IsochroneAppContent() {
            </div>
         </div>
 
-        {/* 错误提示 */}
+        {/* 错误提示 - 跟随面板 */}
         {error && (
           <div className="absolute w-full z-50 bottom-full left-0 mb-2 px-4 md:top-full md:bottom-auto md:left-auto md:right-0 md:mt-2 md:mb-0 md:px-0">
             <ErrorMessage message={error} onDismiss={clearError} />
@@ -207,15 +210,45 @@ function IsochroneAppContent() {
         )}
       </div>
       
-      {/* 移动端/折叠时的开关按钮 */}
+      {/* 折叠后的状态显示 / 重新打开按钮 (右上角折叠效果) */}
       <button 
-        onClick={() => setIsPanelOpen(!isPanelOpen)}
-        className={`absolute top-4 right-4 z-30 p-2.5 rounded-xl bg-white/90 backdrop-blur shadow-lg text-gray-600 hover:bg-white transition-all ${isPanelOpen ? 'hidden' : 'block'}`}
+        onClick={() => setIsPanelOpen(true)}
+        className={`
+            absolute top-4 right-4 z-30 
+            bg-white/90 backdrop-blur shadow-lg border border-white/20
+            text-gray-700 hover:bg-white hover:text-emerald-600
+            transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+            flex items-center gap-3 overflow-hidden
+            ${!isPanelOpen 
+              ? 'translate-y-0 opacity-100 scale-100 py-3 px-4 rounded-xl' 
+              : 'translate-y-[-120%] opacity-0 scale-90 py-0 px-0 rounded-full h-0 w-0'
+            }
+        `}
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 shrink-0">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+        </div>
+        <div className="flex flex-col items-start whitespace-nowrap">
+            <span className="text-sm font-bold">编辑查询</span>
+            <span className="text-[10px] text-gray-500 opacity-80">
+                {selectedLandmark?.name.slice(0, 6)} · {profile === 'driving-car' ? '驾车' : profile === 'cycling-regular' ? '骑行' : '步行'}
+            </span>
+        </div>
       </button>
+
+      {/* 纯图标开关 (当非ResultMode且Panel关闭时显示，作为备份入口) */}
+      {!isResultMode && !isPanelOpen && (
+          <button 
+            onClick={() => setIsPanelOpen(true)}
+            className="absolute top-4 right-4 z-20 p-2.5 rounded-xl bg-white/90 backdrop-blur shadow-lg text-gray-600 hover:bg-white transition-all"
+          >
+             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+      )}
 
     </div>
   );

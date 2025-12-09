@@ -208,6 +208,8 @@ export default function IsochroneMap({
         zoom={zoom} 
         onMapClick={onMapClick} 
         useMapHook={MapComponents.useMap}
+        isochrones={transformedIsochrones}
+        landmark={landmark}
       />
       
       {/* 渲染等时圈 - 从大到小渲染以确保小的在上面 */}
@@ -244,17 +246,45 @@ function MapControllerWrapper({
   zoom,
   onMapClick,
   useMapHook,
+  isochrones,
+  landmark
 }: { 
   center: [number, number]; 
   zoom: number;
   onMapClick?: (lat: number, lng: number) => void;
   useMapHook: () => L.Map;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  isochrones: any[];
+  landmark: CityLandmark | null;
 }) {
   const map = useMapHook();
   
+  // 基础视图控制
   useEffect(() => {
-    map.setView(center, zoom, { animate: true });
-  }, [center, map, zoom]);
+    // 只有当没有等时圈数据时，才强制跟随 center/zoom
+    // 如果有等时圈数据，我们将优先适配等时圈的范围
+    if (isochrones.length === 0) {
+      map.setView(center, zoom, { animate: true });
+    }
+  }, [center, map, zoom, isochrones.length]);
+
+  // 自动适配等时圈范围
+  useEffect(() => {
+    if (isochrones.length > 0) {
+      // 动态导入 L (leaflet) 因为我们在 useEffect 中
+      import('leaflet').then((L) => {
+        const group = L.default.geoJSON(isochrones);
+        const bounds = group.getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { 
+            padding: [50, 50], // 增加内边距
+            animate: true,
+            duration: 1
+          });
+        }
+      });
+    }
+  }, [isochrones, map]);
   
   useEffect(() => {
     if (!onMapClick) return;
