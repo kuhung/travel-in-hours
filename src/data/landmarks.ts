@@ -12,6 +12,22 @@ export const cityLandmarks: CityLandmark[] = [
     description: '上海市徐汇区宜山路地铁站',
   },
   {
+    id: 'shanghai-hongqiao-station',
+    name: '上海虹桥站',
+    city: '上海',
+    province: '上海市',
+    coordinates: [121.320081, 31.193964],
+    description: '上海市闵行区重要交通枢纽',
+  },
+  {
+    id: 'shanghai-south-station',
+    name: '上海南站',
+    city: '上海',
+    province: '上海市',
+    coordinates: [121.430041, 31.154579],
+    description: '上海市徐汇区铁路客运站',
+  },
+  {
     id: 'shanghai-peoples-square',
     name: '人民广场',
     city: '上海',
