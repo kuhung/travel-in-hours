@@ -49,13 +49,15 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Isochrones API error:', error);
     
-    const message = error instanceof Error ? error.message : '未知错误';
+    const status = error.status || 500;
+    const message = error.message || '未知错误';
+    
     return NextResponse.json(
-      { error: `获取等时圈数据失败: ${message}` },
-      { status: 500 }
+      { error: message },
+      { status }
     );
   }
 }

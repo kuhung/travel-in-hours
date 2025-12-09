@@ -40,9 +40,11 @@ async function fetchIsochronesFromAPI(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.error?.message || `API 请求失败: ${response.status}`
-    );
+    const errorMessage = errorData.error?.message || `API 请求失败: ${response.status}`;
+    // 抛出带状态码的错误对象
+    const error = new Error(errorMessage);
+    (error as any).status = response.status;
+    throw error;
   }
 
   return response.json();
