@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
+// 可选：通过环境变量覆盖，便于在不同设备/局域网段开发时调整
+const devAllowedOrigins =
+  process.env.NEXT_DEV_ALLOWED_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
+
 const nextConfig: NextConfig = {
+  // 允许在局域网设备访问 dev server 时加载 /_next/* 资源，避免跨域警告
+  allowedDevOrigins: devAllowedOrigins ?? ['192.168.*.*'],
   // 优化图片加载
   images: {
     remotePatterns: [
