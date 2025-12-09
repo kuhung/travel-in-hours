@@ -24,7 +24,6 @@ function IsochroneAppContent() {
   const [rangeMinutes] = useState<number[]>(defaultTimeRanges);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [isMinimalMap, setIsMinimalMap] = useState(false);
-  const [isResultMode, setIsResultMode] = useState(false);
   
   // 等时圈数据
   const { 
@@ -32,9 +31,13 @@ function IsochroneAppContent() {
     loading, 
     error, 
     fetchIsochrones, 
-    clearIsochrones,
+    clearIsochrones, 
     clearError 
   } = useIsochrones();
+
+  // 派生状态：是否处于查看结果模式（有数据且面板折叠）
+  // 只有在面板折叠且有数据时，才认为是“纯净结果浏览模式”
+  const isResultView = isochrones.length > 0 && !isPanelOpen;
 
   // 启动后台预加载
   useEffect(() => {
@@ -60,8 +63,7 @@ function IsochroneAppContent() {
       rangeMinutes
     );
     
-    // 生成成功后，进入结果模式（折叠面板）
-    setIsResultMode(true);
+    // 生成成功后，折叠面板
     setIsPanelOpen(false); 
   }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones]);
 
@@ -69,7 +71,6 @@ function IsochroneAppContent() {
   useEffect(() => {
     if (isochrones.length > 0) {
       clearIsochrones();
-      setIsResultMode(false);
       setIsPanelOpen(true);
     }
   }, [selectedLandmark, profile, clearIsochrones]);
@@ -87,8 +88,8 @@ function IsochroneAppContent() {
         />
       </div>
 
-      {/* 图例 - 仅在有结果时显示 */}
-      {isochrones.length > 0 && (
+      {/* 图例 - 仅在纯净结果浏览模式下显示 */}
+      {isResultView && (
         <MapLegend rangeMinutes={rangeMinutes} />
       )}
 
@@ -108,14 +109,14 @@ function IsochroneAppContent() {
       </button>
 
       {/* 顶部标题 - 极简风格 */}
-      <div className={`absolute top-4 left-4 z-10 pointer-events-none transition-opacity duration-300 ${isResultMode ? 'opacity-0 md:opacity-100' : 'opacity-100'}`}>
+      <div className="absolute top-4 left-4 z-10 pointer-events-none transition-opacity duration-300">
          <h1 className="text-2xl font-bold text-gray-800 drop-shadow-sm flex items-center gap-2">
             <span className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white shadow-emerald-500/30 shadow-lg">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
             </span>
-            <span>可达出行</span>
+            <span className={`${isResultView ? 'hidden md:inline' : 'inline'}`}>可达出行</span>
          </h1>
       </div>
 
@@ -136,7 +137,7 @@ function IsochroneAppContent() {
           md:rounded-2xl md:max-h-[calc(100vh-2rem)]
         `}>
            {/* Mobile Close Button - 仅在非结果模式下显示，方便用户暂时收起 */}
-           {!isResultMode && (
+           {!isResultView && (
              <button
                onClick={() => setIsPanelOpen(false)}
                className="absolute top-2 right-2 p-2 rounded-full bg-gray-100/50 text-gray-500 hover:bg-gray-100 md:hidden"
@@ -212,7 +213,10 @@ function IsochroneAppContent() {
       
       {/* 折叠后的状态显示 / 重新打开按钮 (右上角折叠效果) */}
       <button 
-        onClick={() => setIsPanelOpen(true)}
+        onClick={() => {
+          setIsPanelOpen(true);
+          clearIsochrones();
+        }}
         className={`
             absolute top-4 right-4 z-30 
             bg-white/90 backdrop-blur shadow-lg border border-white/20
@@ -239,7 +243,7 @@ function IsochroneAppContent() {
       </button>
 
       {/* 纯图标开关 (当非ResultMode且Panel关闭时显示，作为备份入口) */}
-      {!isResultMode && !isPanelOpen && (
+      {!isResultView && !isPanelOpen && (
           <button 
             onClick={() => setIsPanelOpen(true)}
             className="absolute top-4 right-4 z-20 p-2.5 rounded-xl bg-white/90 backdrop-blur shadow-lg text-gray-600 hover:bg-white transition-all"
