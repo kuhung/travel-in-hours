@@ -191,6 +191,7 @@ export default function IsochroneMap({
       className="w-full h-full"
       scrollWheelZoom={true}
       zoomControl={false}
+      preferCanvas={true} // 使用 Canvas 渲染，提高截图成功率
     >
       <ZoomControl position="bottomright" />
 

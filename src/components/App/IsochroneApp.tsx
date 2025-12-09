@@ -77,7 +77,7 @@ function IsochroneAppContent() {
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-gray-50">
       {/* 地图层 - 全屏 */}
-      <div className="absolute inset-0 z-0">
+      <div id="app-map-container" className="absolute inset-0 z-0">
         <MapWrapper
           landmark={selectedLandmark}
           isochrones={isochrones}
@@ -175,6 +175,7 @@ function IsochroneAppContent() {
                   landmark={selectedLandmark}
                   profile={profile}
                   rangeMinutes={rangeMinutes}
+                  hasData={isochrones.length > 0}
                 />
               </div>
 
@@ -198,7 +199,7 @@ function IsochroneAppContent() {
       <button 
         onClick={() => {
           setIsPanelOpen(true);
-          clearIsochrones();
+          // 重新打开面板时不自动清除数据，允许用户在查看结果时打开面板进行分享
         }}
         className={`
             absolute top-4 right-4 z-30 

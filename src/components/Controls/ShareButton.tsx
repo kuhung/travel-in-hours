@@ -1,17 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import html2canvas from 'html2canvas';
+import QRCode from 'qrcode';
 import { CityLandmark, TravelProfile } from '@/types';
+import { getColorForRange } from '@/data/isochrone-config';
 
 interface ShareButtonProps {
   landmark: CityLandmark | null;
   profile: TravelProfile;
   rangeMinutes: number[];
+  hasData?: boolean;
 }
 
-export default function ShareButton({ landmark, profile, rangeMinutes }: ShareButtonProps) {
-  const [copied, setCopied] = useState(false);
+export default function ShareButton({ landmark, profile, rangeMinutes, hasData = false }: ShareButtonProps) {
   const [showOptions, setShowOptions] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const generateShareUrl = () => {
     if (!landmark) return '';
@@ -32,20 +36,189 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
     return `${baseUrl}?${params.toString()}`;
   };
 
-  const handleCopyLink = async () => {
-    const url = generateShareUrl();
-    if (!url) return;
-    
+  const handleShareImage = async () => {
+    if (generating || !landmark || !hasData) return;
+    setGenerating(true);
+
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const mapElement = document.getElementById('app-map-container');
+      if (!mapElement) {
+        throw new Error('Map container not found');
+      }
+
+      // 1. 截图地图
+      // 使用 ignoreElements 来隐藏不需要的控件 (Leaflet controls)
+      const canvas = await html2canvas(mapElement, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false,
+        ignoreElements: (element) => {
+          // 隐藏 leaflet 的控件 (zoom, attribution 等)
+          // 也可以通过 class name 匹配
+          return element.classList.contains('leaflet-control-container');
+        }
+      });
+
+      // 2. 生成二维码
+      const shareUrl = generateShareUrl();
+      const qrDataUrl = await QRCode.toDataURL(shareUrl, {
+        margin: 0,
+        width: 80,
+        color: {
+          dark: '#9ca3af', // gray-400
+          light: '#00000000' // 透明背景
+        }
+      });
+      const qrImage = new Image();
+      qrImage.src = qrDataUrl;
+      await new Promise((resolve) => { qrImage.onload = resolve; });
+
+      // 3. 创建合成画布 (增加底部 Footer)
+      const footerHeight = 120;
+      const finalCanvas = document.createElement('canvas');
+      const ctx = finalCanvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context not available');
+
+      // 设置高倍率以保证清晰度 (简单的做法是直接用 html2canvas 的结果尺寸，通常已经是屏幕分辨率)
+      finalCanvas.width = canvas.width;
+      finalCanvas.height = canvas.height + footerHeight;
+
+      // 绘制背景 (白色)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+      // 绘制地图
+      ctx.drawImage(canvas, 0, 0);
+
+      // --- 绘制图例 (Legend) ---
+      // 样式参考 MapLegend.tsx
+      // 位置：地图区域左下角，距离底部稍微留一点空隙 (Footer 之上)
+      const legendWidth = 140;
+      const legendPadding = 12;
+      const legendItemHeight = 24;
+      const legendHeight = legendPadding * 2 + 20 + rangeMinutes.length * legendItemHeight; // 标题高度约20
+      
+      const legendX = 20; // 左边距
+      const legendY = canvas.height - legendHeight - 20; // 距离地图底边 20px
+
+      // 图例背景
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // white/90
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 4;
+      
+      // 绘制圆角矩形背景
+      const radius = 8;
+      ctx.beginPath();
+      ctx.roundRect(legendX, legendY, legendWidth, legendHeight, radius);
+      ctx.fill();
+      ctx.shadowColor = 'transparent'; // 重置阴影
+
+      // 边框
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 图例标题
+      ctx.fillStyle = '#6b7280'; // gray-500
+      ctx.font = '600 12px system-ui, -apple-system, sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText('等时圈范围', legendX + legendPadding, legendY + legendPadding);
+
+      // 图例项
+      rangeMinutes.forEach((minutes, index) => {
+        const { color, fillColor } = getColorForRange(minutes);
+        const itemY = legendY + legendPadding + 20 + index * legendItemHeight;
+        
+        // 色块
+        const boxSize = 16;
+        ctx.fillStyle = fillColor; // 填充色
+        ctx.fillRect(legendX + legendPadding, itemY, boxSize, boxSize);
+        
+        // 色块边框
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(legendX + legendPadding, itemY, boxSize, boxSize);
+
+        // 文字
+        ctx.fillStyle = '#374151'; // gray-700
+        ctx.font = '500 12px system-ui, -apple-system, sans-serif';
+        ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8, itemY + 2);
+      });
+
+      // 绘制 Footer 背景
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, canvas.height, finalCanvas.width, footerHeight);
+
+      // 绘制分割线
+      ctx.strokeStyle = '#f3f4f6';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height);
+      ctx.lineTo(finalCanvas.width, canvas.height);
+      ctx.stroke();
+
+      // --- 绘制文字 ---
+      const padding = 40;
+      const textBaseY = canvas.height + padding;
+
+      // 标题: 地点名称
+      ctx.fillStyle = '#111827'; // gray-900
+      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText(landmark.name, padding, textBaseY);
+
+      // 副标题: 网址
+      ctx.fillStyle = '#059669'; // emerald-600
+      ctx.font = '24px system-ui, -apple-system, sans-serif';
+      ctx.fillText('https://keda.kuhung.me', padding, textBaseY + 45);
+
+      // --- 绘制二维码 ---
+      const qrSize = 80;
+      const qrX = finalCanvas.width - padding - qrSize;
+      const qrY = canvas.height + (footerHeight - qrSize) / 2;
+
+      // QR 背景 (可选，现在是透明的)
+      // ctx.fillStyle = '#f3f4f6';
+      // ctx.fillRect(qrX, qrY, qrSize, qrSize);
+      
+      // 绘制二维码图片
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      // 4. 导出图片
+      finalCanvas.toBlob(async (blob) => {
+        if (!blob) return;
+
+        // 尝试构建 ClipboardItem
+        try {
+          // 只有 png 支持较好
+          const item = new ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+          alert('图片已生成并复制到剪贴板！');
+        } catch (err) {
+          console.warn('Clipboard API failed, falling back to download', err);
+          // 降级：下载
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `keda-map-${landmark.name}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      }, 'image/png');
+
     } catch (err) {
-      console.error('复制失败:', err);
+      console.error('Screenshot failed:', err);
+      alert('生成图片失败，请重试');
+    } finally {
+      setGenerating(false);
     }
   };
 
-  const handleShare = async (platform: 'weibo' | 'wechat' | 'twitter') => {
+  const handleShare = async (platform: 'weibo' | 'twitter' | 'wechat') => {
     const url = generateShareUrl();
     if (!url) return;
     
@@ -67,7 +240,6 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
         );
         break;
       case 'wechat':
-        // 微信需要特殊处理，这里显示二维码
         alert('请使用微信扫描页面二维码分享');
         break;
     }
@@ -75,6 +247,8 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
     setShowOptions(false);
   };
 
+  // 如果没有地点，或者（有地点但没有数据），都显示禁用状态
+  // 但为了引导用户，当有地点但没数据时，文案可以区分
   if (!landmark) {
     return (
       <button 
@@ -87,6 +261,23 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
         </svg>
         选择地点后可分享
+      </button>
+    );
+  }
+
+  // 有地点但没数据
+  if (!hasData) {
+    return (
+      <button 
+        disabled
+        className="w-full py-3 px-4 rounded-xl bg-gray-100 text-gray-400 
+                   cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+        分析范围后可分享
       </button>
     );
   }
@@ -111,24 +302,29 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
         <div className="absolute bottom-full left-0 right-0 mb-2 
                         bg-white/98 backdrop-blur-xl border border-gray-200 rounded-xl 
                         shadow-2xl overflow-hidden animate-fade-in z-50">
+          
+          {/* 生成图片按钮 - 替换了原来的复制链接 */}
           <button
-            onClick={handleCopyLink}
+            onClick={handleShareImage}
+            disabled={generating}
             className="w-full px-4 py-3 text-left hover:bg-gray-50 
-                     transition-colors flex items-center gap-3 text-gray-700 text-sm"
+                     transition-colors flex items-center gap-3 text-gray-700 text-sm disabled:opacity-50"
           >
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-              {copied ? (
-                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+              {generating ? (
+                <svg className="w-4 h-4 text-indigo-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
-                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               )}
             </div>
-            <span>{copied ? '已复制!' : '复制链接'}</span>
+            <span>{generating ? '生成中...' : '保存分享图片'}</span>
           </button>
+
           <button
             onClick={() => handleShare('weibo')}
             className="w-full px-4 py-3 text-left hover:bg-gray-50 
@@ -141,6 +337,7 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
             </div>
             <span>分享到微博</span>
           </button>
+          
           <button
             onClick={() => handleShare('twitter')}
             className="w-full px-4 py-3 text-left hover:bg-gray-50 
@@ -153,6 +350,7 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
             </div>
             <span>分享到 X (Twitter)</span>
           </button>
+          
           <button
             onClick={() => handleShare('wechat')}
             className="w-full px-4 py-3 text-left hover:bg-gray-50 
@@ -170,4 +368,3 @@ export default function ShareButton({ landmark, profile, rangeMinutes }: ShareBu
     </div>
   );
 }
-
