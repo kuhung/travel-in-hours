@@ -46,7 +46,7 @@ export default function IsochroneMap({
     }>;
     Marker: React.ComponentType<{ position: [number, number]; children?: React.ReactNode }>;
     Popup: React.ComponentType<{ children?: React.ReactNode }>;
-    ZoomControl: React.ComponentType<{ position: string }>;
+    ZoomControl: React.ComponentType<{ position: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' }>;
     useMap: () => L.Map;
   } | null>(null);
   
