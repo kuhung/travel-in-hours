@@ -17,10 +17,10 @@ function IsochroneAppContent() {
   // 从 URL 参数读取初始值
   const shareParams = useShareParams();
   
-  // 状态管理
+  // 状态管理 - 默认选中1小时和2小时
   const [selectedLandmark, setSelectedLandmark] = useState<CityLandmark | null>(null);
   const [profile, setProfile] = useState<TravelProfile>('driving-car');
-  const [rangeMinutes, setRangeMinutes] = useState<number[]>([30, 60]);
+  const [rangeMinutes, setRangeMinutes] = useState<number[]>([60, 120]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // 等时圈数据
@@ -107,21 +107,23 @@ function IsochroneAppContent() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 
                               flex items-center justify-center shadow-lg shadow-emerald-500/25">
-                <span className="text-xl">🗺️</span>
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">出行可达地图</h1>
-                <p className="text-xs text-gray-400">基于 OpenRouteService 实时计算</p>
+                <p className="text-xs text-gray-400">3小时内 · 去哪都行</p>
               </div>
             </div>
             
             {/* 移动端侧边栏切换按钮 */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 rounded-lg bg-white/10 backdrop-blur-sm 
-                       text-white hover:bg-white/20 transition-colors"
+              className="lg:hidden p-2.5 rounded-xl bg-white/10 backdrop-blur-sm 
+                       text-white hover:bg-white/20 transition-all active:scale-95"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                       d={sidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
               </svg>
@@ -132,19 +134,19 @@ function IsochroneAppContent() {
 
       {/* 控制面板侧边栏 */}
       <aside 
-        className={`absolute top-0 right-0 h-full z-[3000] w-full max-w-sm 
+        className={`absolute top-0 right-0 h-full z-[3000] w-full max-w-[340px]
                    transform transition-transform duration-300 ease-in-out
                    ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
                    lg:translate-x-0`}
       >
-        <div className="h-full bg-slate-900/95 backdrop-blur-md border-l border-white/10 
-                       overflow-y-auto pt-20 pb-6 px-4">
-          <div className="space-y-6">
+        <div className="h-full bg-slate-900/95 backdrop-blur-xl border-l border-white/10 
+                       overflow-y-auto pt-20 pb-6 px-5">
+          <div className="space-y-5">
             {/* 移动端关闭按钮 */}
-            <div className="lg:hidden flex justify-end mb-4">
+            <div className="lg:hidden flex justify-end -mt-2 mb-2">
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
+                className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-all"
                 aria-label="关闭侧边栏"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,24 +156,38 @@ function IsochroneAppContent() {
             </div>
 
             {/* 地点选择 */}
-            <section>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                出发地点
-              </h2>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-sm font-semibold text-white">出发地点</h2>
+              </div>
               <CitySelector
                 selectedLandmark={selectedLandmark}
                 onSelect={setSelectedLandmark}
               />
-              <p className="mt-2 text-xs text-gray-500">
-                💡 也可以直接点击地图选择任意位置
+              <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                点击地图可选择任意位置
               </p>
             </section>
 
             {/* 出行方式 */}
-            <section>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                出行方式
-              </h2>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <h2 className="text-sm font-semibold text-white">出行方式</h2>
+              </div>
               <TravelModeSelector
                 selected={profile}
                 onSelect={setProfile}
@@ -179,19 +195,29 @@ function IsochroneAppContent() {
             </section>
 
             {/* 时间范围 */}
-            <section>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                可达时间
-              </h2>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-sm font-semibold text-white">可达时间</h2>
+              </div>
               <TimeRangeSelector
                 selected={rangeMinutes}
                 onSelect={setRangeMinutes}
                 maxRange={maxRange}
               />
               {profile === 'driving-car' && (
-                <p className="mt-2 text-xs text-amber-400">
-                  ⚠️ ORS API 限制驾车等时圈最多 1 小时
-                </p>
+                <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                  <svg className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <p className="text-xs text-amber-300/90">
+                    ORS API 限制驾车等时圈最多 1 小时
+                  </p>
+                </div>
               )}
             </section>
 
@@ -201,7 +227,7 @@ function IsochroneAppContent() {
             )}
 
             {/* 分享按钮 */}
-            <section className="pt-4 border-t border-white/10">
+            <section className="pt-3 border-t border-white/5">
               <ShareButton
                 landmark={selectedLandmark}
                 profile={profile}
@@ -210,27 +236,30 @@ function IsochroneAppContent() {
             </section>
 
             {/* 关于信息 */}
-            <section className="pt-4 border-t border-white/10">
-              <div className="text-xs text-gray-500 space-y-2">
-                <p>
-                  📊 数据来源：OpenRouteService 实时交通数据
-                </p>
-                <p>
-                  🚗 模拟非高峰时段理想状态下的可达范围
-                </p>
-                <p>
-                  📍 实际情况因交通状况有所波动
-                </p>
+            <section className="pt-3 border-t border-white/5">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <span>数据来源：OpenRouteService</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>模拟非高峰时段理想可达范围</span>
+                </div>
               </div>
             </section>
 
             {/* 版权信息 */}
-            <footer className="pt-4 text-center">
+            <footer className="pt-3 text-center border-t border-white/5">
               <p className="text-xs text-gray-600">
-                Made with ❤️ by{' '}
+                Made with <span className="text-rose-400">♥</span> by{' '}
                 <a 
                   href="mailto:hi@kuhung.me" 
-                  className="text-emerald-400 hover:underline"
+                  className="text-emerald-400 hover:text-emerald-300 transition-colors"
                 >
                   kuhung
                 </a>
