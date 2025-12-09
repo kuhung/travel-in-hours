@@ -5,11 +5,11 @@ export const cityLandmarks: CityLandmark[] = [
   // 上海
   {
     id: 'shanghai-yishan-road',
-    name: '宜山路',
+    name: '宜山路地铁站',
     city: '上海',
     province: '上海市',
-    coordinates: [121.412027, 31.173611],
-    description: '上海市闵行区宜山路',
+    coordinates: [121.427194, 31.186717],
+    description: '上海市徐汇区宜山路地铁站',
   },
   {
     id: 'shanghai-peoples-square',
