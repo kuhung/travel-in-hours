@@ -39,8 +39,31 @@ async function fetchIsochronesFromAPI(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.error?.message || `API 请求失败: ${response.status}`;
+    let errorData;
+    let errorText = '';
+    
+    try {
+      errorText = await response.text();
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        // 非 JSON 响应
+      }
+    } catch {
+      // 无法读取响应体
+    }
+
+    console.error('[ORS Error]', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      body: errorText
+    });
+
+    const errorMessage = errorData?.error?.message || 
+                        (typeof errorData?.error === 'string' ? errorData.error : '') || 
+                        `API 请求失败: ${response.status} ${response.statusText}`; // 包含 statusText
+
     // 抛出带状态码的错误对象
     const error = new Error(errorMessage);
     (error as any).status = response.status;

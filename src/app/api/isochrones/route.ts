@@ -31,6 +31,14 @@ export async function POST(request: NextRequest) {
 
     // 获取 API Key
     const apiKey = process.env.ORS_API_KEY;
+    
+    // Debug logging for API Key (masked)
+    if (apiKey) {
+      console.log('API Key loaded:', `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`);
+    } else {
+      console.error('API Key missing in environment variables');
+    }
+
     if (!apiKey) {
       return NextResponse.json(
         { error: '服务器配置错误：缺少 API Key' },
