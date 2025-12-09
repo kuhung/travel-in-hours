@@ -67,7 +67,7 @@ function IsochroneAppContent() {
   }, [selectedLandmark, profile, clearIsochrones]);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-gray-50">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-gray-50">
       {/* 地图层 - 全屏 */}
       <div className="absolute inset-0 z-0">
         <MapWrapper
@@ -107,10 +107,33 @@ function IsochroneAppContent() {
       </div>
 
       {/* 控制面板 - 悬浮卡片 */}
-      <div className={`absolute top-4 right-4 z-20 transition-all duration-300 ${isPanelOpen ? 'translate-x-0' : 'translate-x-[calc(100%+1rem)]'}`}>
-        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 p-5 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
+      <div 
+        className={`
+          fixed bottom-0 left-0 right-0 z-20 transition-transform duration-300 ease-in-out
+          md:absolute md:top-4 md:right-4 md:bottom-auto md:left-auto md:w-80
+          ${isPanelOpen 
+            ? 'translate-y-0 md:translate-x-0' 
+            : 'translate-y-full md:translate-y-0 md:translate-x-[calc(100%+1rem)]'
+          }
+        `}
+      >
+        <div className={`
+          bg-white/90 backdrop-blur-md shadow-xl border border-white/20 p-5 overflow-y-auto
+          w-full rounded-t-2xl max-h-[70vh]
+          md:rounded-2xl md:max-h-[calc(100vh-2rem)]
+        `}>
            {/* 面板开关 (Mobile/Desktop toggle handled by parent div position, but we need a button to reopen if closed) */}
            
+           {/* Mobile Close Button */}
+           <button
+             onClick={() => setIsPanelOpen(false)}
+             className="absolute top-2 right-2 p-2 rounded-full bg-gray-100/50 text-gray-500 hover:bg-gray-100 md:hidden"
+           >
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+             </svg>
+           </button>
+
            <div className="space-y-6">
               {/* 地点选择 */}
               <section>
@@ -178,7 +201,7 @@ function IsochroneAppContent() {
 
         {/* 错误提示 */}
         {error && (
-          <div className="absolute top-full right-0 mt-2 w-full">
+          <div className="absolute w-full z-50 bottom-full left-0 mb-2 px-4 md:top-full md:bottom-auto md:left-auto md:right-0 md:mt-2 md:mb-0 md:px-0">
             <ErrorMessage message={error} onDismiss={clearError} />
           </div>
         )}
@@ -193,18 +216,6 @@ function IsochroneAppContent() {
            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
-
-      {/* 关闭面板按钮 (在面板内) */}
-      {isPanelOpen && (
-        <button
-          onClick={() => setIsPanelOpen(false)}
-          className="absolute top-8 right-8 z-30 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-all lg:hidden"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      )}
 
     </div>
   );
