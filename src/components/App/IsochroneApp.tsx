@@ -10,7 +10,7 @@ import {
   TravelModeSelector, 
   ShareButton 
 } from '@/components/Controls';
-import { ErrorMessage } from '@/components/UI';
+import { ErrorMessage, WelcomeGuide } from '@/components/UI';
 import { useIsochrones, useShareParams } from '@/hooks';
 import { startBackgroundPreload } from '@/lib/cache-preloader';
 
@@ -43,15 +43,6 @@ function IsochroneAppContent() {
     startBackgroundPreload();
   }, []);
 
-  // 从分享参数初始化
-  useEffect(() => {
-    if (shareParams.hasParams) {
-      if (shareParams.landmark) setSelectedLandmark(shareParams.landmark);
-      setProfile(shareParams.profile);
-      // 如果有分享参数，可能也想直接进入结果模式，但目前逻辑是等待用户点击生成
-    }
-  }, [shareParams]);
-
   // 获取等时圈数据
   const handleGenerate = useCallback(async () => {
     if (!selectedLandmark) return;
@@ -66,6 +57,33 @@ function IsochroneAppContent() {
     setIsPanelOpen(false); 
   }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones]);
 
+  // 首次访问自动演示：为了让新用户直接看到效果，如果是首次访问（没有记录），则自动触发一次查询
+  useEffect(() => {
+    if (!shareParams.hasParams && selectedLandmark) {
+      try {
+        const hasVisited = localStorage.getItem('has_visited_intro');
+        if (!hasVisited) {
+          // 延迟一点触发，让用户先看到地图加载
+          const timer = setTimeout(() => {
+            handleGenerate();
+          }, 1500);
+          return () => clearTimeout(timer);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [shareParams.hasParams, handleGenerate]);
+
+  // 从分享参数初始化
+  useEffect(() => {
+    if (shareParams.hasParams) {
+      if (shareParams.landmark) setSelectedLandmark(shareParams.landmark);
+      setProfile(shareParams.profile);
+      // 如果有分享参数，可能也想直接进入结果模式，但目前逻辑是等待用户点击生成
+    }
+  }, [shareParams]);
+
   // 当参数改变时自动清除结果
   useEffect(() => {
     if (isochrones.length > 0) {
@@ -76,6 +94,7 @@ function IsochroneAppContent() {
 
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-gray-50">
+      <WelcomeGuide />
       {/* 地图层 - 全屏 */}
       <div id="app-map-container" className="absolute inset-0 z-0">
         <MapWrapper
