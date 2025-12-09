@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { fetchIsochrones } from '@/lib/ors-client';
+import { TravelProfile } from '@/types';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { coordinates, profile, rangeMinutes } = body;
+
+    // 参数验证
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+      return NextResponse.json(
+        { error: '无效的坐标格式' },
+        { status: 400 }
+      );
+    }
+
+    if (!profile || !['driving-car', 'cycling-regular', 'foot-walking'].includes(profile)) {
+      return NextResponse.json(
+        { error: '无效的出行方式' },
+        { status: 400 }
+      );
+    }
+
+    if (!rangeMinutes || !Array.isArray(rangeMinutes) || rangeMinutes.length === 0) {
+      return NextResponse.json(
+        { error: '无效的时间范围' },
+        { status: 400 }
+      );
+    }
+
+    // 获取 API Key
+    const apiKey = process.env.ORS_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: '服务器配置错误：缺少 API Key' },
+        { status: 500 }
+      );
+    }
+
+    // 调用 ORS API
+    const data = await fetchIsochrones(
+      {
+        coordinates: coordinates as [number, number],
+        profile: profile as TravelProfile,
+        rangeMinutes: rangeMinutes as number[],
+      },
+      apiKey
+    );
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Isochrones API error:', error);
+    
+    const message = error instanceof Error ? error.message : '未知错误';
+    return NextResponse.json(
+      { error: `获取等时圈数据失败: ${message}` },
+      { status: 500 }
+    );
+  }
+}
+
+// 处理 OPTIONS 请求（CORS 预检）
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+

@@ -1,0 +1,224 @@
+'use client';
+
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { CityLandmark, IsochroneFeature, TravelProfile } from '@/types';
+import { getColorForRange } from '@/data/isochrone-config';
+
+interface IsochroneMapProps {
+  landmark: CityLandmark | null;
+  isochrones: IsochroneFeature[];
+  profile: TravelProfile;
+  rangeMinutes: number[];
+  onMapClick?: (lat: number, lng: number) => void;
+}
+
+export default function IsochroneMap({
+  landmark,
+  isochrones,
+  profile,
+  onMapClick,
+}: IsochroneMapProps) {
+  const [isClient, setIsClient] = useState(false);
+  const [MapComponents, setMapComponents] = useState<{
+    MapContainer: React.ComponentType<{ 
+      center: [number, number]; 
+      zoom: number; 
+      className?: string;
+      scrollWheelZoom?: boolean;
+      zoomControl?: boolean;
+      children?: React.ReactNode;
+    }>;
+    TileLayer: React.ComponentType<{ attribution?: string; url: string }>;
+    GeoJSON: React.ComponentType<{ 
+      key?: string;
+      data: GeoJSON.Feature;
+      style?: (feature: GeoJSON.Feature | undefined) => Record<string, unknown>;
+      onEachFeature?: (feature: GeoJSON.Feature, layer: L.Layer) => void;
+    }>;
+    Marker: React.ComponentType<{ position: [number, number]; children?: React.ReactNode }>;
+    Popup: React.ComponentType<{ children?: React.ReactNode }>;
+    useMap: () => L.Map;
+  } | null>(null);
+  
+  // 确保只在客户端运行，动态加载 react-leaflet
+  useEffect(() => {
+    setIsClient(true);
+    
+    // 动态导入 react-leaflet 和 leaflet
+    Promise.all([
+      import('react-leaflet'),
+      import('leaflet'),
+    ]).then(([reactLeaflet, L]) => {
+      // 修复 Leaflet 默认图标问题
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (L.default.Icon.Default.prototype as any)._getIconUrl;
+      L.default.Icon.Default.mergeOptions({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+      
+      setMapComponents({
+        MapContainer: reactLeaflet.MapContainer,
+        TileLayer: reactLeaflet.TileLayer,
+        GeoJSON: reactLeaflet.GeoJSON,
+        Marker: reactLeaflet.Marker,
+        Popup: reactLeaflet.Popup,
+        useMap: reactLeaflet.useMap,
+      });
+    });
+  }, []);
+  
+  // 计算地图中心和缩放级别
+  const center: [number, number] = landmark 
+    ? [landmark.coordinates[1], landmark.coordinates[0]]
+    : [39.9055, 116.3912]; // 默认北京 [lat, lng]
+  
+  const zoom = landmark ? 10 : 5;
+
+  // GeoJSON 样式函数
+  const getStyle = useCallback((feature: GeoJSON.Feature | undefined) => {
+    if (!feature?.properties) return {};
+    
+    const rangeValue = feature.properties.value; // 秒
+    const rangeInMinutes = rangeValue / 60;
+    const colorConfig = getColorForRange(rangeInMinutes);
+    
+    return {
+      color: colorConfig.color,
+      fillColor: colorConfig.fillColor,
+      fillOpacity: colorConfig.opacity,
+      weight: 2,
+    };
+  }, []);
+
+  // 每个等时圈的弹出内容
+  const onEachFeature = useCallback((feature: GeoJSON.Feature, layer: L.Layer) => {
+    if (feature.properties) {
+      const minutes = feature.properties.value / 60;
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      const timeStr = hours > 0 
+        ? `${hours}小时${mins > 0 ? mins + '分钟' : ''}`
+        : `${mins}分钟`;
+      
+      const profileName = profile === 'driving-car' 
+        ? '驾车' 
+        : profile === 'cycling-regular' 
+          ? '骑行' 
+          : '步行';
+      
+      layer.bindPopup(`
+        <div class="p-2">
+          <div class="font-semibold text-gray-800">${timeStr}可达范围</div>
+          <div class="text-sm text-gray-600">出行方式: ${profileName}</div>
+          ${feature.properties.area ? `<div class="text-sm text-gray-600">覆盖面积: ${(feature.properties.area / 1000000).toFixed(2)} km²</div>` : ''}
+        </div>
+      `);
+    }
+  }, [profile]);
+
+  // 排序后的等时圈数据
+  const sortedIsochrones = useMemo(() => {
+    return [...isochrones].sort((a, b) => b.properties.value - a.properties.value);
+  }, [isochrones]);
+
+  // 地标位置
+  const markerPosition: [number, number] | null = landmark 
+    ? [landmark.coordinates[1], landmark.coordinates[0]] 
+    : null;
+
+  if (!isClient || !MapComponents) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-400 border-t-transparent"></div>
+          <p className="text-emerald-400 text-lg font-medium">地图加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { MapContainer, TileLayer, GeoJSON, Marker, Popup } = MapComponents;
+
+  return (
+    <MapContainer
+      center={center}
+      zoom={zoom}
+      className="w-full h-full"
+      scrollWheelZoom={true}
+      zoomControl={true}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | 数据来源: OpenRouteService'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      
+      <MapControllerWrapper 
+        center={center} 
+        zoom={zoom} 
+        onMapClick={onMapClick} 
+        useMapHook={MapComponents.useMap}
+      />
+      
+      {/* 渲染等时圈 - 从大到小渲染以确保小的在上面 */}
+      {sortedIsochrones.map((feature, index) => (
+        <GeoJSON
+          key={`isochrone-${feature.properties.value}-${index}-${landmark?.id || 'default'}`}
+          data={feature}
+          style={getStyle}
+          onEachFeature={onEachFeature}
+        />
+      ))}
+      
+      {/* 地标标记 */}
+      {landmark && markerPosition && (
+        <Marker position={markerPosition}>
+          <Popup>
+            <div className="p-1">
+              <div className="font-bold text-lg text-gray-800">{landmark.name}</div>
+              <div className="text-sm text-gray-600">{landmark.city}, {landmark.province}</div>
+              {landmark.description && (
+                <div className="text-xs text-gray-500 mt-1">{landmark.description}</div>
+              )}
+            </div>
+          </Popup>
+        </Marker>
+      )}
+    </MapContainer>
+  );
+}
+
+// 地图控制器包装组件
+function MapControllerWrapper({ 
+  center, 
+  zoom,
+  onMapClick,
+  useMapHook,
+}: { 
+  center: [number, number]; 
+  zoom: number;
+  onMapClick?: (lat: number, lng: number) => void;
+  useMapHook: () => L.Map;
+}) {
+  const map = useMapHook();
+  
+  useEffect(() => {
+    map.setView(center, zoom, { animate: true });
+  }, [center, map, zoom]);
+  
+  useEffect(() => {
+    if (!onMapClick) return;
+    
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    };
+    
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [map, onMapClick]);
+  
+  return null;
+}
