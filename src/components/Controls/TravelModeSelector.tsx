@@ -39,8 +39,8 @@ export default function TravelModeSelector({ selected, onSelect }: TravelModeSel
             className={`flex-1 flex flex-col items-center gap-1.5 px-3 py-3 
                        rounded-xl border-2 transition-all duration-200
                        ${isSelected
-                         ? 'bg-emerald-500/15 border-emerald-400/60 text-emerald-400 shadow-lg shadow-emerald-500/10'
-                         : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10 hover:text-gray-200'
+                         ? 'bg-emerald-50 border-emerald-500 text-emerald-600 shadow-lg shadow-emerald-500/10'
+                         : 'bg-gray-50 border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                        }`}
           >
             <div className={`transition-transform duration-200 ${isSelected ? 'scale-110' : ''}`}>
