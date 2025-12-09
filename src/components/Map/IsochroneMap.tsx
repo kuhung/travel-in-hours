@@ -10,7 +10,6 @@ interface IsochroneMapProps {
   isochrones: IsochroneFeature[];
   profile: TravelProfile;
   rangeMinutes: number[];
-  isMinimalMap?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
 }
 
@@ -19,7 +18,6 @@ export default function IsochroneMap({
   isochrones,
   profile,
   rangeMinutes,
-  isMinimalMap = false,
   onMapClick,
 }: IsochroneMapProps) {
   const [isClient, setIsClient] = useState(false);
@@ -199,8 +197,6 @@ export default function IsochroneMap({
       <TileLayer
         attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'
         url="https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}"
-        className={isMinimalMap ? 'map-tiles-minimal' : ''}
-        opacity={isMinimalMap ? 0.8 : 1}
       />
       
       <MapControllerWrapper 

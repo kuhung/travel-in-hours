@@ -23,7 +23,6 @@ function IsochroneAppContent() {
   const [profile, setProfile] = useState<TravelProfile>('driving-car');
   const [rangeMinutes] = useState<number[]>(defaultTimeRanges);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
-  const [isMinimalMap, setIsMinimalMap] = useState(false);
   
   // 等时圈数据
   const { 
@@ -84,7 +83,6 @@ function IsochroneAppContent() {
           isochrones={isochrones}
           profile={profile}
           rangeMinutes={rangeMinutes}
-          isMinimalMap={isMinimalMap}
         />
       </div>
 
@@ -92,21 +90,6 @@ function IsochroneAppContent() {
       {isResultView && (
         <MapLegend rangeMinutes={rangeMinutes} />
       )}
-
-      {/* 地图样式切换按钮 - 调整位置避免遮挡 */}
-      <button
-        onClick={() => setIsMinimalMap(!isMinimalMap)}
-        className="absolute bottom-24 left-4 md:bottom-8 md:left-auto md:right-4 z-10 bg-white/90 backdrop-blur p-2 rounded-lg shadow-lg hover:bg-white transition-all text-gray-600"
-        title={isMinimalMap ? "切换标准地图" : "切换简约地图"}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {isMinimalMap ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-          ) : (
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          )}
-        </svg>
-      </button>
 
       {/* 顶部标题 - 极简风格 */}
       <div className="absolute top-4 left-4 z-10 pointer-events-none transition-opacity duration-300">
