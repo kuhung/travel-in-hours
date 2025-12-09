@@ -198,7 +198,7 @@ export default function IsochroneMap({
 
       <TileLayer
         attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'
-        url="https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+        url="https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}"
         className={isMinimalMap ? 'map-tiles-minimal' : ''}
         opacity={isMinimalMap ? 0.8 : 1}
       />
@@ -264,7 +264,7 @@ function MapControllerWrapper({
     // 只有当没有等时圈数据时，才强制跟随 center/zoom
     // 如果有等时圈数据，我们将优先适配等时圈的范围
     if (isochrones.length === 0) {
-      map.setView(center, zoom, { animate: true });
+    map.setView(center, zoom, { animate: true });
     }
   }, [center, map, zoom, isochrones.length]);
 

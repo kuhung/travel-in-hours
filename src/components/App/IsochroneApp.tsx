@@ -31,7 +31,7 @@ function IsochroneAppContent() {
     loading, 
     error, 
     fetchIsochrones, 
-    clearIsochrones, 
+    clearIsochrones,
     clearError 
   } = useIsochrones();
 
@@ -70,7 +70,7 @@ function IsochroneAppContent() {
   // 当参数改变时自动清除结果
   useEffect(() => {
     if (isochrones.length > 0) {
-      clearIsochrones();
+    clearIsochrones();
       setIsPanelOpen(true);
     }
   }, [selectedLandmark, profile, clearIsochrones]);
@@ -138,14 +138,14 @@ function IsochroneAppContent() {
         `}>
            {/* Mobile Close Button - 仅在非结果模式下显示，方便用户暂时收起 */}
            {!isResultView && (
-             <button
-               onClick={() => setIsPanelOpen(false)}
-               className="absolute top-2 right-2 p-2 rounded-full bg-gray-100/50 text-gray-500 hover:bg-gray-100 md:hidden"
-             >
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-               </svg>
-             </button>
+           <button
+             onClick={() => setIsPanelOpen(false)}
+             className="absolute top-2 right-2 p-2 rounded-full bg-gray-100/50 text-gray-500 hover:bg-gray-100 md:hidden"
+           >
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+             </svg>
+           </button>
            )}
 
            <div className="space-y-6">
@@ -247,11 +247,11 @@ function IsochroneAppContent() {
           <button 
             onClick={() => setIsPanelOpen(true)}
             className="absolute top-4 right-4 z-20 p-2.5 rounded-xl bg-white/90 backdrop-blur shadow-lg text-gray-600 hover:bg-white transition-all"
-          >
-             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
       )}
 
     </div>
