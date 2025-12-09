@@ -24,6 +24,7 @@ interface MapWrapperProps {
   isochrones: IsochroneFeature[];
   profile: TravelProfile;
   rangeMinutes: number[];
+  isMinimalMap?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
 }
 

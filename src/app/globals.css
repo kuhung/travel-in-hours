@@ -40,6 +40,10 @@ body {
   background: #1e293b;
 }
 
+.map-tiles-minimal {
+  filter: grayscale(100%) contrast(0.8) brightness(1.1) !important;
+}
+
 .leaflet-popup-content-wrapper {
   background: #1e293b;
   color: #f1f5f9;
@@ -111,47 +115,4 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(16, 185, 129, 0.6);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.4s ease-out;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* 等时圈多边形悬停效果 */
-.leaflet-interactive:hover {
-  filter: brightness(1.1);
-}
-
-/* 选择文本颜色 */
-::selection {
-  background: rgba(16, 185, 129, 0.3);
-  color: #f1f5f9;
 }

@@ -129,7 +129,7 @@ OpenRouteService 免费套餐限制:
 
 ## 📄 许可证
 
-MIT License © 2025 [kuhung](mailto:hi@kuhung.me)
+MIT License © 2025 [kuhung](https://kuhung.me/about)
 
 ## 🙏 致谢
 

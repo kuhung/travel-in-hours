@@ -10,6 +10,7 @@ interface IsochroneMapProps {
   isochrones: IsochroneFeature[];
   profile: TravelProfile;
   rangeMinutes: number[];
+  isMinimalMap?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
 }
 
@@ -17,6 +18,8 @@ export default function IsochroneMap({
   landmark,
   isochrones,
   profile,
+  rangeMinutes,
+  isMinimalMap = false,
   onMapClick,
 }: IsochroneMapProps) {
   const [isClient, setIsClient] = useState(false);
@@ -29,7 +32,12 @@ export default function IsochroneMap({
       zoomControl?: boolean;
       children?: React.ReactNode;
     }>;
-    TileLayer: React.ComponentType<{ attribution?: string; url: string }>;
+    TileLayer: React.ComponentType<{ 
+      attribution?: string; 
+      url: string; 
+      className?: string;
+      opacity?: number;
+    }>;
     GeoJSON: React.ComponentType<{ 
       key?: string;
       data: GeoJSON.Feature;
@@ -38,6 +46,7 @@ export default function IsochroneMap({
     }>;
     Marker: React.ComponentType<{ position: [number, number]; children?: React.ReactNode }>;
     Popup: React.ComponentType<{ children?: React.ReactNode }>;
+    ZoomControl: React.ComponentType<{ position: string }>;
     useMap: () => L.Map;
   } | null>(null);
   
@@ -65,6 +74,7 @@ export default function IsochroneMap({
         GeoJSON: reactLeaflet.GeoJSON,
         Marker: reactLeaflet.Marker,
         Popup: reactLeaflet.Popup,
+        ZoomControl: reactLeaflet.ZoomControl,
         useMap: reactLeaflet.useMap,
       });
     });
@@ -174,7 +184,7 @@ export default function IsochroneMap({
     );
   }
 
-  const { MapContainer, TileLayer, GeoJSON, Marker, Popup } = MapComponents;
+  const { MapContainer, TileLayer, GeoJSON, Marker, Popup, ZoomControl } = MapComponents;
 
   return (
     <MapContainer
@@ -182,11 +192,15 @@ export default function IsochroneMap({
       zoom={zoom}
       className="w-full h-full"
       scrollWheelZoom={true}
-      zoomControl={true}
+      zoomControl={false}
     >
+      <ZoomControl position="bottomright" />
+
       <TileLayer
         attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'
         url="https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+        className={isMinimalMap ? 'map-tiles-minimal' : ''}
+        opacity={isMinimalMap ? 0.8 : 1}
       />
       
       <MapControllerWrapper 

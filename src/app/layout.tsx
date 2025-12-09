@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "出行可达地图 | Travel Reach Map",
   description: "基于 OpenRouteService 实时交通数据，查看从城市地标出发 1-3 小时内可达的区域。支持驾车、骑行、步行等多种出行方式。",
   keywords: ["可达地图", "等时圈", "通勤范围", "OpenRouteService", "交通分析", "城市交通"],
-  authors: [{ name: "kuhung", url: "mailto:hi@kuhung.me" }],
+  authors: [{ name: "kuhung", url: "https://kuhung.me/about" }],
   openGraph: {
     title: "出行可达地图",
     description: "查看从城市地标出发，指定时间内可达的区域",
