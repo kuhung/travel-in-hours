@@ -1,24 +1,24 @@
 import { IsochroneRange, TravelProfile } from '@/types';
 
-// 等时圈时间范围配置 (分钟) - 固定3档：1小时、2小时、3小时
-export const defaultTimeRanges = [60, 120, 180];
+// 等时圈时间范围配置 (分钟) - 固定3档：15分钟、30分钟、1小时
+export const defaultTimeRanges = [15, 30, 60];
 
-// 颜色方案 - 浅绿(1h) → 浅黄(2h) → 浅红(3h)
+// 颜色方案 - 浅绿(15m) → 浅黄(30m) → 浅红(1h)
 export const isochroneColors: IsochroneRange[] = [
   {
-    minutes: 60,
+    minutes: 15,
     color: '#15803d',
     fillColor: '#86efac', // 浅绿
     opacity: 0.6,
   },
   {
-    minutes: 120,
+    minutes: 30,
     color: '#a16207',
     fillColor: '#fde68a', // 浅黄
     opacity: 0.5,
   },
   {
-    minutes: 180,
+    minutes: 60,
     color: '#dc2626',
     fillColor: '#fca5a5', // 浅红
     opacity: 0.4,
@@ -75,4 +75,3 @@ export const formatDuration = (seconds: number): string => {
 
 // 将分钟转换为秒（ORS API 使用秒）
 export const minutesToSeconds = (minutes: number): number => minutes * 60;
-

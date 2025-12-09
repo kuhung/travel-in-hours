@@ -2,11 +2,13 @@
 
 import { useState, useCallback } from 'react';
 import { IsochroneFeature, TravelProfile } from '@/types';
+import { getCachedIsochrones, setCachedIsochrones } from '@/lib/isochrone-cache';
 
 interface UseIsochronesResult {
   isochrones: IsochroneFeature[];
   loading: boolean;
   error: string | null;
+  fromCache: boolean;
   fetchIsochrones: (
     coordinates: [number, number],
     profile: TravelProfile,
@@ -20,6 +22,7 @@ export function useIsochrones(): UseIsochronesResult {
   const [isochrones, setIsochrones] = useState<IsochroneFeature[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState(false);
 
   const fetchIsochrones = useCallback(async (
     coordinates: [number, number],
@@ -28,6 +31,16 @@ export function useIsochrones(): UseIsochronesResult {
   ) => {
     setLoading(true);
     setError(null);
+    setFromCache(false);
+
+    // 首先检查本地缓存
+    const cached = getCachedIsochrones(coordinates, profile, rangeMinutes);
+    if (cached && cached.length > 0) {
+      setIsochrones(cached);
+      setFromCache(true);
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/isochrones', {
@@ -48,7 +61,14 @@ export function useIsochrones(): UseIsochronesResult {
       }
 
       const data = await response.json();
-      setIsochrones(data.features || []);
+      const features = data.features || [];
+      
+      setIsochrones(features);
+      
+      // 保存到本地缓存
+      if (features.length > 0) {
+        setCachedIsochrones(coordinates, profile, rangeMinutes, features);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : '获取数据失败';
       setError(message);
@@ -61,6 +81,7 @@ export function useIsochrones(): UseIsochronesResult {
   const clearIsochrones = useCallback(() => {
     setIsochrones([]);
     setError(null);
+    setFromCache(false);
   }, []);
 
   const clearError = useCallback(() => {
@@ -71,6 +92,7 @@ export function useIsochrones(): UseIsochronesResult {
     isochrones,
     loading,
     error,
+    fromCache,
     fetchIsochrones,
     clearIsochrones,
     clearError,

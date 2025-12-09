@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { CityLandmark, TravelProfile } from '@/types';
-import { travelProfiles } from '@/data/isochrone-config';
+import { travelProfiles, defaultTimeRanges } from '@/data/isochrone-config';
+import { getLandmarkById } from '@/data/landmarks';
 import { MapWrapper } from '@/components/Map';
 import { 
   CitySelector, 
@@ -12,15 +13,18 @@ import {
 } from '@/components/Controls';
 import { LoadingOverlay, ErrorMessage } from '@/components/UI';
 import { useIsochrones, useShareParams } from '@/hooks';
+import { startBackgroundPreload } from '@/lib/cache-preloader';
 
 function IsochroneAppContent() {
   // 从 URL 参数读取初始值
   const shareParams = useShareParams();
   
-  // 状态管理 - 默认选中1小时和2小时
-  const [selectedLandmark, setSelectedLandmark] = useState<CityLandmark | null>(null);
+  // 状态管理
+  // 默认选中宜山路
+  const [selectedLandmark, setSelectedLandmark] = useState<CityLandmark | null>(() => getLandmarkById('shanghai-yishan-road') || null);
   const [profile, setProfile] = useState<TravelProfile>('driving-car');
-  const [rangeMinutes, setRangeMinutes] = useState<number[]>([60, 120]);
+  // 固定使用 15, 30, 60 分钟
+  const [rangeMinutes] = useState<number[]>(defaultTimeRanges);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // 等时圈数据
@@ -28,34 +32,28 @@ function IsochroneAppContent() {
     isochrones, 
     loading, 
     error, 
+    fromCache,
     fetchIsochrones, 
     clearIsochrones,
     clearError 
   } = useIsochrones();
 
-  // 当前出行方式的最大时间范围
-  const currentProfileConfig = travelProfiles.find(p => p.id === profile);
-  const maxRange = currentProfileConfig?.maxRange || 60;
+  // 启动后台预加载
+  useEffect(() => {
+    startBackgroundPreload();
+  }, []);
 
   // 从分享参数初始化
   useEffect(() => {
     if (shareParams.hasParams) {
-      setSelectedLandmark(shareParams.landmark);
+      if (shareParams.landmark) setSelectedLandmark(shareParams.landmark);
       setProfile(shareParams.profile);
-      setRangeMinutes(shareParams.rangeMinutes.filter(r => r <= maxRange));
+      // 时间范围不再从分享参数读取，强制使用默认值
     }
-  }, [shareParams, maxRange]);
+  }, [shareParams]);
 
-  // 当切换出行方式时，过滤超出范围的时间选项
-  useEffect(() => {
-    setRangeMinutes(prev => {
-      const filtered = prev.filter(r => r <= maxRange);
-      return filtered.length > 0 ? filtered : [Math.min(30, maxRange)];
-    });
-  }, [maxRange]);
-
-  // 获取等时圈数据
-  const handleFetchIsochrones = useCallback(async () => {
+  // 获取等时圈数据 - 仅在点击生成按钮时调用
+  const handleGenerate = useCallback(async () => {
     if (!selectedLandmark) return;
     
     await fetchIsochrones(
@@ -65,27 +63,11 @@ function IsochroneAppContent() {
     );
   }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones]);
 
-  // 选择地标后自动获取数据
+  // 当地标或出行方式改变时，清空当前结果，等待用户点击生成
   useEffect(() => {
-    if (selectedLandmark) {
-      handleFetchIsochrones();
-    } else {
-      clearIsochrones();
-    }
-  }, [selectedLandmark, profile, rangeMinutes, handleFetchIsochrones, clearIsochrones]);
+    clearIsochrones();
+  }, [selectedLandmark, profile, clearIsochrones]);
 
-  // 处理地图点击
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    const customLandmark: CityLandmark = {
-      id: `custom-${Date.now()}`,
-      name: '自定义位置',
-      city: '点击位置',
-      province: '',
-      coordinates: [lng, lat],
-      description: `经度: ${lng.toFixed(4)}, 纬度: ${lat.toFixed(4)}`,
-    };
-    setSelectedLandmark(customLandmark);
-  }, []);
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-900">
@@ -96,7 +78,6 @@ function IsochroneAppContent() {
           isochrones={isochrones}
           profile={profile}
           rangeMinutes={rangeMinutes}
-          onMapClick={handleMapClick}
         />
       </div>
 
@@ -140,8 +121,8 @@ function IsochroneAppContent() {
                    lg:translate-x-0`}
       >
         <div className="h-full bg-slate-900/95 backdrop-blur-xl border-l border-white/10 
-                       overflow-y-auto pt-20 pb-6 px-5">
-          <div className="space-y-5">
+                       overflow-y-auto pt-20 pb-6 px-5 flex flex-col">
+          <div className="space-y-6 flex-1">
             {/* 移动端关闭按钮 */}
             <div className="lg:hidden flex justify-end -mt-2 mb-2">
               <button
@@ -170,12 +151,6 @@ function IsochroneAppContent() {
                 selectedLandmark={selectedLandmark}
                 onSelect={setSelectedLandmark}
               />
-              <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                点击地图可选择任意位置
-              </p>
             </section>
 
             {/* 出行方式 */}
@@ -194,7 +169,7 @@ function IsochroneAppContent() {
               />
             </section>
 
-            {/* 时间范围 */}
+            {/* 时间范围 (只读展示) */}
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center">
@@ -204,27 +179,41 @@ function IsochroneAppContent() {
                 </div>
                 <h2 className="text-sm font-semibold text-white">可达时间</h2>
               </div>
-              <TimeRangeSelector
-                selected={rangeMinutes}
-                onSelect={setRangeMinutes}
-                maxRange={maxRange}
-              />
-              {profile === 'driving-car' && (
-                <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                  <svg className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-xs text-amber-300/90">
-                    ORS API 限制驾车等时圈最多 1 小时
-                  </p>
-                </div>
-              )}
+              <TimeRangeSelector selected={rangeMinutes} />
+            </section>
+
+            {/* 生成按钮 */}
+            <section className="pt-2">
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className={`w-full py-3.5 px-4 rounded-xl font-bold text-white shadow-lg 
+                          transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]
+                          ${loading 
+                            ? 'bg-slate-700 cursor-not-allowed' 
+                            : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-emerald-500/20'
+                          }`}
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    正在生成...
+                  </span>
+                ) : (
+                  '开始生成'
+                )}
+              </button>
             </section>
 
             {/* 错误提示 */}
             {error && (
               <ErrorMessage message={error} onDismiss={clearError} />
             )}
+            
+            <div className="flex-1"></div>
 
             {/* 分享按钮 */}
             <section className="pt-3 border-t border-white/5">
@@ -244,12 +233,14 @@ function IsochroneAppContent() {
                   </svg>
                   <span>数据来源：OpenRouteService</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>模拟非高峰时段理想可达范围</span>
-                </div>
+                {fromCache && isochrones.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>已从缓存加载</span>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -270,8 +261,9 @@ function IsochroneAppContent() {
         </div>
       </aside>
 
-      {/* 加载遮罩 */}
-      {loading && <LoadingOverlay />}
+      {/* 加载遮罩 (仅在首次加载或全屏阻塞时显示，现在有了按钮loading，这个可以优化) */}
+      {/* {loading && <LoadingOverlay />} */}
+      {/* 我们保留LoadingOverlay作为备用，或者如果需要全局遮罩 */}
 
       {/* 移动端侧边栏遮罩 */}
       {sidebarOpen && (
@@ -295,4 +287,3 @@ export default function IsochroneApp() {
     </Suspense>
   );
 }
-

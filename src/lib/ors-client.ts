@@ -1,5 +1,6 @@
 import { TravelProfile, IsochroneResponse } from '@/types';
 import { minutesToSeconds } from '@/data/isochrone-config';
+import { unstable_cache } from 'next/cache';
 
 const ORS_BASE_URL = 'https://api.openrouteservice.org/v2';
 
@@ -10,9 +11,9 @@ interface IsochroneRequestParams {
 }
 
 /**
- * 调用 OpenRouteService Isochrones API
+ * 基础 ORS API 调用
  */
-export async function fetchIsochrones(
+async function fetchIsochronesFromAPI(
   params: IsochroneRequestParams,
   apiKey: string
 ): Promise<IsochroneResponse> {
@@ -45,6 +46,40 @@ export async function fetchIsochrones(
   }
 
   return response.json();
+}
+
+/**
+ * 生成缓存 Key
+ */
+function generateCacheKey(params: IsochroneRequestParams): string {
+  const { coordinates, profile, rangeMinutes } = params;
+  // 确保数字精度一致，避免微小差异导致缓存失效
+  const coordKey = `${coordinates[0].toFixed(4)}_${coordinates[1].toFixed(4)}`;
+  const rangeKey = [...rangeMinutes].sort((a, b) => a - b).join('_');
+  return `ors-iso-${coordKey}-${profile}-${rangeKey}`;
+}
+
+/**
+ * 带服务端缓存的等时圈数据获取
+ * 使用 Next.js unstable_cache 进行持久化缓存
+ */
+export async function fetchIsochrones(
+  params: IsochroneRequestParams,
+  apiKey: string
+): Promise<IsochroneResponse> {
+  const cacheKey = generateCacheKey(params);
+  
+  // 使用 unstable_cache 包装 API 调用
+  const getCachedData = unstable_cache(
+    async () => fetchIsochronesFromAPI(params, apiKey),
+    [cacheKey], // 缓存 Key 部分
+    {
+      revalidate: 60 * 60 * 24 * 30, // 30天缓存 (地理数据变化不频繁)
+      tags: ['isochrones', `iso-${params.profile}`],
+    }
+  );
+
+  return getCachedData();
 }
 
 /**

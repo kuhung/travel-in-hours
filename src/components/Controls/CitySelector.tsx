@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { CityLandmark } from '@/types';
-import { cityLandmarks, landmarksByProvince } from '@/data/landmarks';
+import { cityLandmarks, landmarksByCity } from '@/data/landmarks';
 
 interface CitySelectorProps {
   selectedLandmark: CityLandmark | null;
@@ -16,21 +16,20 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
   // 过滤地标
   const filteredLandmarks = useMemo(() => {
     if (!searchQuery.trim()) {
-      return landmarksByProvince;
+      return landmarksByCity;
     }
     
     const query = searchQuery.toLowerCase();
     const filtered = cityLandmarks.filter(
       l => l.name.toLowerCase().includes(query) ||
-           l.city.toLowerCase().includes(query) ||
-           l.province.toLowerCase().includes(query)
+           l.city.toLowerCase().includes(query)
     );
     
     return filtered.reduce((acc, landmark) => {
-      if (!acc[landmark.province]) {
-        acc[landmark.province] = [];
+      if (!acc[landmark.city]) {
+        acc[landmark.city] = [];
       }
-      acc[landmark.province].push(landmark);
+      acc[landmark.city].push(landmark);
       return acc;
     }, {} as Record<string, CityLandmark[]>);
   }, [searchQuery]);
@@ -116,11 +115,11 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
 
           {/* 城市列表 */}
           <div className="overflow-y-auto max-h-[calc(60vh-60px)]">
-            {Object.entries(filteredLandmarks).map(([province, landmarks]) => (
-              <div key={province}>
+            {Object.entries(filteredLandmarks).map(([city, landmarks]) => (
+              <div key={city}>
                 <div className="sticky top-0 px-4 py-2 bg-slate-700/95 backdrop-blur-sm
                               text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                  {province}
+                  {city}
                 </div>
                 {landmarks.map((landmark) => (
                   <button
@@ -137,7 +136,7 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-white text-sm truncate">{landmark.name}</div>
-                      <div className="text-xs text-gray-500 truncate">{landmark.city}</div>
+                      <div className="text-xs text-gray-500 truncate">{landmark.description}</div>
                     </div>
                     {selectedLandmark?.id === landmark.id && (
                       <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
