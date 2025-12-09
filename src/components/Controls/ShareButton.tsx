@@ -75,7 +75,7 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       await new Promise((resolve) => { qrImage.onload = resolve; });
 
       // 3. 创建合成画布 (增加底部 Footer)
-      const footerHeight = 120;
+      const footerHeight = 160;
       const finalCanvas = document.createElement('canvas');
       const ctx = finalCanvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
@@ -161,21 +161,36 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
       // --- 绘制文字 ---
       const padding = 40;
-      const textBaseY = canvas.height + padding;
+      let textY = canvas.height + 36;
 
       // 标题: 地点名称
       ctx.fillStyle = '#111827'; // gray-900
-      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
       ctx.textBaseline = 'top';
-      ctx.fillText(landmark.name, padding, textBaseY);
+      ctx.fillText(landmark.name, padding, textY);
+      
+      textY += 50;
 
-      // 副标题: 网址
+      // 副标题: 出行方式与坐标
+      ctx.fillStyle = '#4b5563'; // gray-600
+      ctx.font = '500 24px system-ui, -apple-system, sans-serif';
+      
+      const modeText = profile === 'driving-car' ? '驾车' : 
+                       profile === 'cycling-regular' ? '骑行' : '步行';
+      
+      const coordText = `${landmark.coordinates[1].toFixed(4)}, ${landmark.coordinates[0].toFixed(4)}`;
+      
+      ctx.fillText(`${modeText} · ${coordText}`, padding, textY);
+
+      textY += 36;
+
+      // 网址
       ctx.fillStyle = '#059669'; // emerald-600
-      ctx.font = '24px system-ui, -apple-system, sans-serif';
-      ctx.fillText('https://keda.kuhung.me', padding, textBaseY + 45);
+      ctx.font = '20px system-ui, -apple-system, sans-serif';
+      ctx.fillText('https://keda.kuhung.me', padding, textY);
 
       // --- 绘制二维码 ---
-      const qrSize = 80;
+      const qrSize = 96;
       const qrX = finalCanvas.width - padding - qrSize;
       const qrY = canvas.height + (footerHeight - qrSize) / 2;
 

@@ -74,7 +74,8 @@ export default function ResultToolbar({
       qrImage.src = qrDataUrl;
       await new Promise((resolve) => { qrImage.onload = resolve; });
 
-      const footerHeight = 120;
+      // 3. 创建合成画布 (增加底部 Footer)
+      const footerHeight = 160;
       const finalCanvas = document.createElement('canvas');
       const ctx = finalCanvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
@@ -82,9 +83,11 @@ export default function ResultToolbar({
       finalCanvas.width = canvas.width;
       finalCanvas.height = canvas.height + footerHeight;
 
+      // 绘制背景 (白色)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
+      // 绘制地图
       ctx.drawImage(canvas, 0, 0);
 
       // 绘制图例
@@ -96,6 +99,7 @@ export default function ResultToolbar({
       const legendX = 20;
       const legendY = canvas.height - legendHeight - 20;
 
+      // 图例背景
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
       ctx.shadowBlur = 10;
@@ -107,27 +111,33 @@ export default function ResultToolbar({
       ctx.fill();
       ctx.shadowColor = 'transparent';
 
+      // 边框
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
+      // 图例标题
       ctx.fillStyle = '#6b7280';
       ctx.font = '600 12px system-ui, -apple-system, sans-serif';
       ctx.textBaseline = 'top';
       ctx.fillText('等时圈范围', legendX + legendPadding, legendY + legendPadding);
 
+      // 图例项
       rangeMinutes.forEach((minutes, index) => {
         const { color, fillColor } = getColorForRange(minutes);
         const itemY = legendY + legendPadding + 20 + index * legendItemHeight;
         
+        // 色块
         const boxSize = 16;
         ctx.fillStyle = fillColor;
         ctx.fillRect(legendX + legendPadding, itemY, boxSize, boxSize);
         
+        // 色块边框
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
         ctx.strokeRect(legendX + legendPadding, itemY, boxSize, boxSize);
 
+        // 文字
         ctx.fillStyle = '#374151';
         ctx.font = '500 12px system-ui, -apple-system, sans-serif';
         ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8, itemY + 2);
@@ -137,6 +147,7 @@ export default function ResultToolbar({
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, canvas.height, finalCanvas.width, footerHeight);
 
+      // 绘制分割线
       ctx.strokeStyle = '#f3f4f6';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -144,19 +155,38 @@ export default function ResultToolbar({
       ctx.lineTo(finalCanvas.width, canvas.height);
       ctx.stroke();
 
+      // --- 绘制文字 ---
       const padding = 40;
-      const textBaseY = canvas.height + padding;
+      let textY = canvas.height + 36; // 起始 Y 坐标
 
-      ctx.fillStyle = '#111827';
-      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      // 1. 地点名称
+      ctx.fillStyle = '#111827'; // gray-900
+      ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
       ctx.textBaseline = 'top';
-      ctx.fillText(landmark.name, padding, textBaseY);
+      ctx.fillText(landmark.name, padding, textY);
+      
+      textY += 50;
 
-      ctx.fillStyle = '#059669';
-      ctx.font = '24px system-ui, -apple-system, sans-serif';
-      ctx.fillText('https://keda.kuhung.me', padding, textBaseY + 45);
+      // 2. 出行方式与坐标
+      ctx.fillStyle = '#4b5563'; // gray-600
+      ctx.font = '500 24px system-ui, -apple-system, sans-serif';
+      
+      const modeText = profile === 'driving-car' ? '驾车' : 
+                       profile === 'cycling-regular' ? '骑行' : '步行';
+      
+      const coordText = `${landmark.coordinates[1].toFixed(4)}, ${landmark.coordinates[0].toFixed(4)}`;
+      
+      ctx.fillText(`${modeText} · ${coordText}`, padding, textY);
 
-      const qrSize = 80;
+      textY += 36;
+
+      // 3. 网址
+      ctx.fillStyle = '#059669'; // emerald-600
+      ctx.font = '20px system-ui, -apple-system, sans-serif';
+      ctx.fillText('https://keda.kuhung.me', padding, textY);
+
+      // --- 绘制二维码 ---
+      const qrSize = 96;
       const qrX = finalCanvas.width - padding - qrSize;
       const qrY = canvas.height + (footerHeight - qrSize) / 2;
       ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
@@ -348,4 +378,3 @@ export default function ResultToolbar({
     </div>
   );
 }
-
