@@ -76,14 +76,27 @@ function IsochroneAppContent() {
     }
   }, [shareParams.hasParams, handleGenerate]);
 
-  // 从分享参数初始化
+  // 从分享参数初始化（仅执行一次）
+  const [shareParamsApplied, setShareParamsApplied] = useState(false);
+  
   useEffect(() => {
-    if (shareParams.hasParams) {
+    if (shareParams.hasParams && !shareParamsApplied) {
       if (shareParams.landmark) setSelectedLandmark(shareParams.landmark);
       setProfile(shareParams.profile);
-      // 如果有分享参数，可能也想直接进入结果模式，但目前逻辑是等待用户点击生成
+      setShareParamsApplied(true);
     }
-  }, [shareParams]);
+  }, [shareParams, shareParamsApplied]);
+  
+  // 当分享参数应用完成后，自动触发数据加载
+  useEffect(() => {
+    if (shareParamsApplied && selectedLandmark && isochrones.length === 0 && !loading) {
+      // 延迟一点，确保状态都已更新
+      const timer = setTimeout(() => {
+        handleGenerate();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [shareParamsApplied, selectedLandmark, isochrones.length, loading, handleGenerate]);
 
   // 当参数改变时自动清除结果
   useEffect(() => {
