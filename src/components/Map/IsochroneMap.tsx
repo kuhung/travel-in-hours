@@ -262,9 +262,15 @@ function MapControllerWrapper({
     // 只有当没有等时圈数据时，才强制跟随 center/zoom
     // 如果有等时圈数据，我们将优先适配等时圈的范围
     if (isochrones.length === 0) {
-    map.setView(center, zoom, { animate: true });
+      // 如果是自定义选点（ID以 'custom-' 开头），保持当前缩放级别，只移动中心
+      if (landmark?.id?.startsWith('custom-')) {
+        map.panTo(center, { animate: true });
+      } else {
+        // 预设地标或初始状态，设置中心和缩放
+        map.setView(center, zoom, { animate: true });
+      }
     }
-  }, [center, map, zoom, isochrones.length]);
+  }, [center, map, zoom, isochrones.length, landmark]);
 
   // 自动适配等时圈范围
   useEffect(() => {
