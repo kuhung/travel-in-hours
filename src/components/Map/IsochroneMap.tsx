@@ -193,7 +193,7 @@ export default function IsochroneMap({
       zoomControl={false}
       preferCanvas={true} // 使用 Canvas 渲染，提高截图成功率
     >
-      <ZoomControl position="bottomright" />
+      <ZoomControl position="bottomleft" />
 
       <TileLayer
         attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'

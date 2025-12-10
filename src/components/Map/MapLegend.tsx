@@ -9,7 +9,7 @@ export const MapLegend: React.FC<MapLegendProps> = ({
   rangeMinutes = defaultTimeRanges 
 }) => {
   return (
-    <div className="absolute bottom-6 left-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-lg shadow-lg border border-white/20">
+    <div className="absolute z-[400] top-20 left-4 bottom-auto md:top-auto md:bottom-8 md:left-auto md:right-4 bg-white/90 backdrop-blur-md p-3 rounded-lg shadow-lg border border-white/20">
       <div className="text-xs font-semibold text-gray-500 mb-2">等时圈范围</div>
       <div className="flex flex-col gap-2">
         {rangeMinutes.map((minutes) => {
