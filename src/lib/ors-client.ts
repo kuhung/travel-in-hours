@@ -18,9 +18,20 @@ async function fetchIsochronesFromAPI(
   apiKey: string
 ): Promise<IsochroneResponse> {
   const { coordinates, profile, rangeMinutes } = params;
+
+  // 根据出行方式应用折扣系数，避免可达范围过大
+  // 驾车 x0.8, 骑行 x0.7, 步行 x0.6
+  let discountFactor = 1.0;
+  if (profile === 'driving-car') {
+    discountFactor = 0.8;
+  } else if (profile === 'cycling-regular') {
+    discountFactor = 0.7;
+  } else if (profile === 'foot-walking') {
+    discountFactor = 0.6;
+  }
   
-  // 将分钟转换为秒
-  const rangeSeconds = rangeMinutes.map(minutesToSeconds);
+  // 将分钟转换为秒，并应用折扣
+  const rangeSeconds = rangeMinutes.map(m => minutesToSeconds(m * discountFactor));
   
   const requestBody = {
     locations: [coordinates],
@@ -72,7 +83,22 @@ async function fetchIsochronesFromAPI(
     throw error;
   }
 
-  return response.json();
+  const data: IsochroneResponse = await response.json();
+
+  // 修正返回数据的 properties.value
+  // 因为请求时用了折扣，返回的 value 是打折后的秒数。
+  // 我们需要把它改回用户请求的原始秒数，以便前端正确显示颜色和标签。
+  if (data.features && discountFactor !== 1.0) {
+    data.features.forEach(feature => {
+      if (feature.properties && typeof feature.properties.value === 'number') {
+        // 还原： value / discountFactor
+        // 注意取整，避免浮点数误差
+        feature.properties.value = Math.round(feature.properties.value / discountFactor);
+      }
+    });
+  }
+
+  return data;
 }
 
 /**
@@ -83,7 +109,8 @@ function generateCacheKey(params: IsochroneRequestParams): string {
   // 确保数字精度一致，避免微小差异导致缓存失效
   const coordKey = `${coordinates[0].toFixed(4)}_${coordinates[1].toFixed(4)}`;
   const rangeKey = [...rangeMinutes].sort((a, b) => a - b).join('_');
-  return `ors-iso-${coordKey}-${profile}-${rangeKey}`;
+  // v3: 增加了 value 还原逻辑，确保缓存的数据包含原始时间值
+  return `ors-iso-v3-${coordKey}-${profile}-${rangeKey}`;
 }
 
 /**
