@@ -74,11 +74,13 @@ export default function ResultToolbar({
       }
 
       // 1. 截图地图
+      // 使用固定 scale=2 确保高清晰度输出
       const canvas = await html2canvas(mapElement, {
         useCORS: true,
         allowTaint: true,
         backgroundColor: null,
         logging: false,
+        scale: 2, // 固定 2 倍分辨率，确保清晰度
         ignoreElements: (element) => {
           return element.classList.contains('leaflet-control-container');
         }
@@ -86,10 +88,11 @@ export default function ResultToolbar({
 
       // 2. 生成二维码
       const shareUrl = generateShareUrl();
+      // 由于画布使用 scale=2，二维码也需要对应放大以保持清晰
       const qrDataUrl = await QRCode.toDataURL(shareUrl, {
         margin: 2,
-        width: 128,
-        errorCorrectionLevel: 'M',
+        width: 256, // 放大到 256px 确保 2x 缩放后仍清晰
+        errorCorrectionLevel: 'H', // 使用高纠错级别，提高扫描成功率
         color: {
           dark: '#000000',
           light: '#ffffff'
@@ -100,6 +103,8 @@ export default function ResultToolbar({
       await new Promise((resolve) => { qrImage.onload = resolve; });
 
       // 3. 判断屏幕方向 (横屏 vs 竖屏)
+      // 注意：由于 html2canvas 使用了 scale=2，所有尺寸都已经是 2 倍
+      const scale = 2;
       const isLandscape = canvas.width > canvas.height;
       const hasPOI = poiByLayer.length > 0;
       const totalPOIs = poiByLayer.reduce((sum, layer) => sum + layer.points.length, 0);
@@ -107,7 +112,7 @@ export default function ResultToolbar({
       // 4. 根据方向和POI数量决定布局策略
       // 横屏: POI清单放底部悬浮条，不遮挡地图
       // 竖屏: POI清单放左侧悬浮卡片
-      const footerHeight = isLandscape ? 100 : 120;
+      const footerHeight = (isLandscape ? 100 : 120) * scale;
       
       // 计算裁剪区域（仅针对竖屏）
       let mapWidth = canvas.width;
@@ -148,27 +153,27 @@ export default function ResultToolbar({
 
       // ========== 绘制左侧 POI 清单面板 (优化设计) ==========
       if (hasPOI && totalPOIs > 0) {
-        // 根据屏幕方向调整清单宽度
+        // 根据屏幕方向调整清单宽度（乘以 scale）
         const listPanelWidth = isLandscape 
-          ? Math.min(180, mapWidth * 0.18)  // 横屏时更窄
-          : Math.min(200, mapWidth * 0.22); // 竖屏时适中
+          ? Math.min(180 * scale, mapWidth * 0.18)  // 横屏时更窄
+          : Math.min(200 * scale, mapWidth * 0.22); // 竖屏时适中
         
-        const listPadding = isLandscape ? 12 : 16;
-        const headerHeight = 56;
+        const listPadding = (isLandscape ? 12 : 16) * scale;
+        const headerHeight = 56 * scale;
         
         // 计算清单实际需要的高度
-        let neededHeight = headerHeight + 16;
+        let neededHeight = headerHeight + 16 * scale;
         poiByLayer.forEach(layer => {
-          neededHeight += 24 + layer.points.length * 22 + 12;
+          neededHeight += 24 * scale + layer.points.length * 22 * scale + 12 * scale;
         });
         
         // 清单最大高度限制
-        const maxListHeight = mapHeight - 40;
+        const maxListHeight = mapHeight - 40 * scale;
         const actualListHeight = Math.min(neededHeight, maxListHeight);
 
         // ===== 清单容器 - 现代磨砂玻璃效果 =====
-        const listX = 16;
-        const listY = 16;
+        const listX = 16 * scale;
+        const listY = 16 * scale;
         
         // 背景渐变 - 从左上到右下的微妙渐变
         const bgGradient = ctx.createLinearGradient(listX, listY, listX + listPanelWidth, listY + actualListHeight);
@@ -177,18 +182,18 @@ export default function ResultToolbar({
         
         // 绘制圆角矩形背景
         ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 20 * scale;
         ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 4;
+        ctx.shadowOffsetY = 4 * scale;
         
         ctx.fillStyle = bgGradient;
         ctx.beginPath();
-        ctx.roundRect(listX, listY, listPanelWidth, actualListHeight, 16);
+        ctx.roundRect(listX, listY, listPanelWidth, actualListHeight, 16 * scale);
         ctx.fill();
         
         // 边框 - 细微的白色光泽边
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 * scale;
         ctx.stroke();
 
         ctx.shadowColor = 'transparent';
@@ -199,30 +204,30 @@ export default function ResultToolbar({
         // 标题装饰线条
         ctx.fillStyle = '#10b981';
         ctx.beginPath();
-        ctx.roundRect(listX + listPadding, currentY, 3, 18, 1.5);
+        ctx.roundRect(listX + listPadding, currentY, 3 * scale, 18 * scale, 1.5 * scale);
         ctx.fill();
         
         // 标题文字
         ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${isLandscape ? 13 : 14}px system-ui, -apple-system, sans-serif`;
+        ctx.font = `bold ${(isLandscape ? 13 : 14) * scale}px system-ui, -apple-system, sans-serif`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText('可达地点', listX + listPadding + 10, currentY + 1);
+        ctx.fillText('可达热点', listX + listPadding + 10 * scale, currentY + 1 * scale);
 
         // 副标题
         ctx.fillStyle = '#9ca3af';
-        ctx.font = `400 ${isLandscape ? 10 : 11}px system-ui, -apple-system, sans-serif`;
-        ctx.fillText(`共 ${totalPOIs} 个地点`, listX + listPadding + 10, currentY + (isLandscape ? 16 : 18));
+        ctx.font = `400 ${(isLandscape ? 10 : 11) * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText(`共 ${totalPOIs} 个地点`, listX + listPadding + 10 * scale, currentY + (isLandscape ? 16 : 18) * scale);
 
-        currentY += headerHeight - 10;
+        currentY += headerHeight - 10 * scale;
 
         // ===== 绘制各圈层 =====
         poiByLayer.forEach((layer) => {
-          if (currentY > listY + actualListHeight - 30) return;
+          if (currentY > listY + actualListHeight - 30 * scale) return;
           
           // 圈层标签 - 药丸形状
-          const pillWidth = ctx.measureText(formatLayerTime(layer.layerMinutes)).width + 24;
-          const pillHeight = 20;
+          const pillWidth = ctx.measureText(formatLayerTime(layer.layerMinutes)).width + 24 * scale;
+          const pillHeight = 20 * scale;
           
           // 药丸背景
           ctx.fillStyle = layer.fillColor;
@@ -232,30 +237,30 @@ export default function ResultToolbar({
           
           // 药丸边框
           ctx.strokeStyle = layer.color;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.5 * scale;
           ctx.stroke();
 
           // 圈层文字
           ctx.fillStyle = layer.color;
-          ctx.font = `600 ${isLandscape ? 10 : 11}px system-ui, -apple-system, sans-serif`;
+          ctx.font = `600 ${(isLandscape ? 10 : 11) * scale}px system-ui, -apple-system, sans-serif`;
           ctx.textBaseline = 'middle';
-          ctx.fillText(formatLayerTime(layer.layerMinutes), listX + listPadding + 12, currentY + pillHeight / 2);
+          ctx.fillText(formatLayerTime(layer.layerMinutes), listX + listPadding + 12 * scale, currentY + pillHeight / 2);
           
-          currentY += pillHeight + 8;
+          currentY += pillHeight + 8 * scale;
 
           // POI 列表
           layer.points.forEach((poi) => {
-            if (currentY > listY + actualListHeight - 24) return;
+            if (currentY > listY + actualListHeight - 24 * scale) return;
 
             // 编号圆圈
-            const circleX = listX + listPadding + 9;
-            const circleY = currentY + 9;
-            const circleRadius = isLandscape ? 7 : 8;
+            const circleX = listX + listPadding + 9 * scale;
+            const circleY = currentY + 9 * scale;
+            const circleRadius = (isLandscape ? 7 : 8) * scale;
 
             // 圆圈阴影
             ctx.shadowColor = layer.color + '40';
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetY = 1;
+            ctx.shadowBlur = 4 * scale;
+            ctx.shadowOffsetY = 1 * scale;
 
             ctx.beginPath();
             ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
@@ -266,62 +271,62 @@ export default function ResultToolbar({
 
             // 编号文字
             ctx.fillStyle = '#ffffff';
-            ctx.font = `bold ${isLandscape ? 8 : 9}px system-ui, -apple-system, sans-serif`;
+            ctx.font = `bold ${(isLandscape ? 8 : 9) * scale}px system-ui, -apple-system, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(poi.index.toString(), circleX, circleY);
 
             // POI 名称
             ctx.fillStyle = '#374151';
-            ctx.font = `500 ${isLandscape ? 10 : 11}px system-ui, -apple-system, sans-serif`;
+            ctx.font = `500 ${(isLandscape ? 10 : 11) * scale}px system-ui, -apple-system, sans-serif`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             
             let poiName = poi.name;
-            const maxWidth = listPanelWidth - listPadding * 2 - 28;
+            const maxWidth = listPanelWidth - listPadding * 2 - 28 * scale;
             while (ctx.measureText(poiName).width > maxWidth && poiName.length > 0) {
               poiName = poiName.slice(0, -1);
             }
             if (poiName !== poi.name) poiName += '...';
             
-            ctx.fillText(poiName, listX + listPadding + 22, currentY + 4);
-            currentY += isLandscape ? 20 : 22;
+            ctx.fillText(poiName, listX + listPadding + 22 * scale, currentY + 4 * scale);
+            currentY += (isLandscape ? 20 : 22) * scale;
           });
 
-          currentY += 8;
+          currentY += 8 * scale;
         });
       }
 
       // ===== 绘制图例 (优化设计) =====
-      const legendPadding = 10;
-      const legendItemHeight = isLandscape ? 20 : 22;
-      const legendWidth = isLandscape ? 110 : 120;
-      const legendHeight = legendPadding * 2 + 18 + rangeMinutes.length * legendItemHeight;
+      const legendPadding = 10 * scale;
+      const legendItemHeight = (isLandscape ? 20 : 22) * scale;
+      const legendWidth = (isLandscape ? 110 : 120) * scale;
+      const legendHeight = legendPadding * 2 + 18 * scale + rangeMinutes.length * legendItemHeight;
       
       // 图例位置 - 统一放右下角，与页面布局逻辑一致
-      const legendX = mapWidth - legendWidth - 16;
+      const legendX = mapWidth - legendWidth - 16 * scale;
       // Legend Y 定位基于裁剪后的地图高度
-      const legendY = mapHeight - legendHeight - 16;
+      const legendY = mapHeight - legendHeight - 16 * scale;
 
       // 图例背景 - 磨砂玻璃
       ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-      ctx.shadowBlur = 12;
-      ctx.shadowOffsetY = 2;
+      ctx.shadowBlur = 12 * scale;
+      ctx.shadowOffsetY = 2 * scale;
       
       ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
       ctx.beginPath();
-      ctx.roundRect(legendX, legendY, legendWidth, legendHeight, 12);
+      ctx.roundRect(legendX, legendY, legendWidth, legendHeight, 12 * scale);
       ctx.fill();
 
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * scale;
       ctx.stroke();
       
       ctx.shadowColor = 'transparent';
 
       // 图例标题
       ctx.fillStyle = '#6b7280';
-      ctx.font = `600 ${isLandscape ? 10 : 11}px system-ui, -apple-system, sans-serif`;
+      ctx.font = `600 ${(isLandscape ? 10 : 11) * scale}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText('等时圈范围', legendX + legendPadding, legendY + legendPadding);
@@ -329,24 +334,24 @@ export default function ResultToolbar({
       // 图例项
       rangeMinutes.forEach((minutes, index) => {
         const { color, fillColor } = getColorForRange(minutes);
-        const itemY = legendY + legendPadding + 18 + index * legendItemHeight;
+        const itemY = legendY + legendPadding + 18 * scale + index * legendItemHeight;
         
         // 色块 - 圆角
-        const boxSize = isLandscape ? 14 : 16;
+        const boxSize = (isLandscape ? 14 : 16) * scale;
         ctx.fillStyle = fillColor;
         ctx.beginPath();
-        ctx.roundRect(legendX + legendPadding, itemY, boxSize, boxSize, 3);
+        ctx.roundRect(legendX + legendPadding, itemY, boxSize, boxSize, 3 * scale);
         ctx.fill();
         
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * scale;
         ctx.stroke();
 
         // 文字
         ctx.fillStyle = '#374151';
-        ctx.font = `500 ${isLandscape ? 10 : 11}px system-ui, -apple-system, sans-serif`;
+        ctx.font = `500 ${(isLandscape ? 10 : 11) * scale}px system-ui, -apple-system, sans-serif`;
         ctx.textBaseline = 'top';
-        ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8, itemY + 2);
+        ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8 * scale, itemY + 2 * scale);
       });
 
       // ========== Footer 区域 - 响应式两栏/三栏布局 ==========
@@ -362,27 +367,28 @@ export default function ResultToolbar({
 
       // 顶部分割线
       ctx.strokeStyle = '#e5e7eb';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * scale;
       ctx.beginPath();
       ctx.moveTo(0, footerY);
       ctx.lineTo(canvasWidth, footerY);
       ctx.stroke();
 
-      const padding = isLandscape ? 24 : 28;
-      const qrSize = isLandscape ? 64 : 72;
+      const padding = (isLandscape ? 24 : 28) * scale;
+      // 二维码尺寸放大以确保扫描清晰
+      const qrSize = (isLandscape ? 80 : 90) * scale; // 从 64/72 增大到 80/90
 
-      // 判断是否需要简化布局（窄屏幕）
-      const isNarrowScreen = canvasWidth < 500;
+      // 判断是否需要简化布局（窄屏幕）- 按缩放后的尺寸判断
+      const isNarrowScreen = canvasWidth < 500 * scale;
       
       if (isNarrowScreen) {
         // ===== 窄屏两栏布局：左侧信息 + 右侧二维码 =====
         
         // 左栏：地点信息
         ctx.fillStyle = '#1f2937';
-        ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
+        ctx.font = `bold ${18 * scale}px system-ui, -apple-system, sans-serif`;
         ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-        ctx.fillText(landmark.name, padding, footerY + 28);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(landmark.name, padding, footerY + 28 * scale);
 
         const modeText = profile === 'driving-car' ? '驾车' : 
                          profile === 'cycling-regular' ? '骑行' : '步行';
@@ -392,37 +398,37 @@ export default function ResultToolbar({
           : `${maxMinutes}min`;
         
         ctx.fillStyle = '#6b7280';
-        ctx.font = '500 12px system-ui, -apple-system, sans-serif';
-        ctx.fillText(`${modeText} | ${rangeText} 可达`, padding, footerY + 52);
+        ctx.font = `500 ${12 * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText(`${modeText} | ${rangeText} 可达`, padding, footerY + 52 * scale);
 
         // 品牌和日期
         const now = new Date();
         const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
         ctx.fillStyle = '#10b981';
-        ctx.font = '500 11px system-ui, -apple-system, sans-serif';
-        ctx.fillText('可达出行', padding, footerY + 76);
+        ctx.font = `500 ${11 * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText('可达出行', padding, footerY + 76 * scale);
         ctx.fillStyle = '#9ca3af';
-        ctx.font = '400 10px system-ui, -apple-system, sans-serif';
-        ctx.fillText(dateStr, padding + 50, footerY + 76);
+        ctx.font = `400 ${10 * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText(dateStr, padding + 50 * scale, footerY + 76 * scale);
 
         // 右栏：二维码
         const qrX = canvasWidth - padding - qrSize;
-        const qrY = footerY + (footerHeight - qrSize - 12) / 2;
+        const qrY = footerY + (footerHeight - qrSize - 12 * scale) / 2;
         
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 8 * scale;
         ctx.beginPath();
-        ctx.roundRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8, 6);
+        ctx.roundRect(qrX - 4 * scale, qrY - 4 * scale, qrSize + 8 * scale, qrSize + 8 * scale, 6 * scale);
         ctx.fill();
         ctx.shadowColor = 'transparent';
         
         ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
         
         ctx.fillStyle = '#9ca3af';
-        ctx.font = '400 9px system-ui, -apple-system, sans-serif';
+        ctx.font = `400 ${9 * scale}px system-ui, -apple-system, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText('扫码查看', qrX + qrSize / 2, qrY + qrSize + 10);
+        ctx.fillText('扫码查看', qrX + qrSize / 2, qrY + qrSize + 10 * scale);
         
       } else {
         // ===== 宽屏三栏布局 =====
@@ -432,95 +438,95 @@ export default function ResultToolbar({
 
         // 左栏：地点信息
         ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${isLandscape ? 22 : 26}px system-ui, -apple-system, sans-serif`;
-      ctx.textAlign = 'left';
+        ctx.font = `bold ${(isLandscape ? 22 : 26) * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        const leftLineY1 = footerY + (isLandscape ? 32 : 38);
-      ctx.fillText(landmark.name, leftColumnX, leftLineY1);
+        const leftLineY1 = footerY + (isLandscape ? 32 : 38) * scale;
+        ctx.fillText(landmark.name, leftColumnX, leftLineY1);
 
-      const modeText = profile === 'driving-car' ? '驾车' : 
-                       profile === 'cycling-regular' ? '骑行' : '步行';
-      const maxMinutes = rangeMinutes[rangeMinutes.length - 1];
-      const rangeText = maxMinutes >= 60 
-        ? `${Math.round(maxMinutes / 60 * 10) / 10}h 可达范围`
-        : `${maxMinutes}min 可达范围`;
-      
-      ctx.fillStyle = '#6b7280';
-        ctx.font = `500 ${isLandscape ? 14 : 16}px system-ui, -apple-system, sans-serif`;
-        const leftLineY2 = footerY + (isLandscape ? 58 : 70);
-      ctx.fillText(`${modeText}  |  ${rangeText}`, leftColumnX, leftLineY2);
+        const modeText = profile === 'driving-car' ? '驾车' : 
+                         profile === 'cycling-regular' ? '骑行' : '步行';
+        const maxMinutes = rangeMinutes[rangeMinutes.length - 1];
+        const rangeText = maxMinutes >= 60 
+          ? `${Math.round(maxMinutes / 60 * 10) / 10}h 可达范围`
+          : `${maxMinutes}min 可达范围`;
+        
+        ctx.fillStyle = '#6b7280';
+        ctx.font = `500 ${(isLandscape ? 14 : 16) * scale}px system-ui, -apple-system, sans-serif`;
+        const leftLineY2 = footerY + (isLandscape ? 58 : 70) * scale;
+        ctx.fillText(`${modeText}  |  ${rangeText}`, leftColumnX, leftLineY2);
 
-      const now = new Date();
-      const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      ctx.fillStyle = '#9ca3af';
-        ctx.font = `400 ${isLandscape ? 11 : 13}px system-ui, -apple-system, sans-serif`;
-        const leftLineY3 = footerY + (isLandscape ? 80 : 96);
-      ctx.fillText(dateStr, leftColumnX, leftLineY3);
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = `400 ${(isLandscape ? 11 : 13) * scale}px system-ui, -apple-system, sans-serif`;
+        const leftLineY3 = footerY + (isLandscape ? 80 : 96) * scale;
+        ctx.fillText(dateStr, leftColumnX, leftLineY3);
 
         // 中栏：品牌 Logo
-      ctx.textAlign = 'center';
-      
-        const logoSize = isLandscape ? 26 : 30;
-        const logoY = footerY + (isLandscape ? 28 : 34);
+        ctx.textAlign = 'center';
+        
+        const logoSize = (isLandscape ? 26 : 30) * scale;
+        const logoY = footerY + (isLandscape ? 28 : 34) * scale;
 
         // Logo 背景
-      ctx.fillStyle = '#10b981';
+        ctx.fillStyle = '#10b981';
         ctx.shadowColor = 'rgba(16, 185, 129, 0.25)';
-        ctx.shadowBlur = 10;
-      ctx.shadowOffsetY = 2;
-      ctx.beginPath();
-        ctx.roundRect(centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 7);
-      ctx.fill();
-      ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 10 * scale;
+        ctx.shadowOffsetY = 2 * scale;
+        ctx.beginPath();
+        ctx.roundRect(centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 7 * scale);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
 
         // Logo 图标
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-        const iconSize = isLandscape ? 10 : 12;
-      ctx.beginPath();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2 * scale;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        const iconSize = (isLandscape ? 10 : 12) * scale;
+        ctx.beginPath();
         ctx.moveTo(centerX - iconSize, logoY + iconSize / 2);
         ctx.lineTo(centerX - iconSize / 3, logoY - iconSize / 2);
         ctx.lineTo(centerX + iconSize / 3, logoY + iconSize / 2);
         ctx.lineTo(centerX + iconSize, logoY - iconSize / 2);
-      ctx.stroke();
+        ctx.stroke();
 
-      // 品牌名称
+        // 品牌名称
         ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${isLandscape ? 16 : 18}px system-ui, -apple-system, sans-serif`;
-        ctx.fillText('可达出行', centerX, footerY + (isLandscape ? 56 : 66));
+        ctx.font = `bold ${(isLandscape ? 16 : 18) * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText('可达出行', centerX, footerY + (isLandscape ? 56 : 66) * scale);
 
-      // Slogan
-      ctx.fillStyle = '#9ca3af';
-        ctx.font = `400 ${isLandscape ? 10 : 12}px system-ui, -apple-system, sans-serif`;
-        ctx.fillText('探索你的小时边界', centerX, footerY + (isLandscape ? 74 : 86));
+        // Slogan
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = `400 ${(isLandscape ? 10 : 12) * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText('探索你的小时边界', centerX, footerY + (isLandscape ? 74 : 86) * scale);
 
-      // 网址
-      ctx.fillStyle = '#10b981';
-        ctx.font = `400 ${isLandscape ? 9 : 11}px system-ui, -apple-system, sans-serif`;
-        ctx.fillText('https://keda.kuhung.me', centerX, footerY + (isLandscape ? 88 : 102));
+        // 网址
+        ctx.fillStyle = '#10b981';
+        ctx.font = `400 ${(isLandscape ? 9 : 11) * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText('https://keda.kuhung.me', centerX, footerY + (isLandscape ? 88 : 102) * scale);
 
         // 右栏：二维码
         const qrX = rightColumnX;
-        const qrY = footerY + (footerHeight - qrSize - (isLandscape ? 12 : 16)) / 2;
+        const qrY = footerY + (footerHeight - qrSize - (isLandscape ? 12 : 16) * scale) / 2;
 
         // 二维码容器
-      ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#ffffff';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.06)';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 10 * scale;
         ctx.beginPath();
-        ctx.roundRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10, 8);
+        ctx.roundRect(qrX - 5 * scale, qrY - 5 * scale, qrSize + 10 * scale, qrSize + 10 * scale, 8 * scale);
         ctx.fill();
         ctx.shadowColor = 'transparent';
         
-      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-      ctx.fillStyle = '#9ca3af';
-        ctx.font = `400 ${isLandscape ? 9 : 10}px system-ui, -apple-system, sans-serif`;
-      ctx.textAlign = 'center';
-        ctx.fillText('扫码查看本地图', qrX + qrSize / 2, qrY + qrSize + (isLandscape ? 12 : 14));
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = `400 ${(isLandscape ? 9 : 10) * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('扫码查看本地图', qrX + qrSize / 2, qrY + qrSize + (isLandscape ? 12 : 14) * scale);
       }
 
       finalCanvas.toBlob(async (blob) => {

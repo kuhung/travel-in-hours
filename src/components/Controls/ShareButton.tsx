@@ -58,11 +58,13 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
       // 1. 截图地图
       // 使用 ignoreElements 来隐藏不需要的控件 (Leaflet controls)
+      // 使用固定 scale=2 确保高清晰度输出
       const canvas = await html2canvas(mapElement, {
         useCORS: true,
         allowTaint: true,
         backgroundColor: null,
         logging: false,
+        scale: 2, // 固定 2 倍分辨率，确保清晰度
         ignoreElements: (element) => {
           // 隐藏 leaflet 的控件 (zoom, attribution 等)
           // 也可以通过 class name 匹配
@@ -72,10 +74,11 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
       // 2. 生成二维码
       const shareUrl = generateShareUrl();
+      // 由于画布使用 scale=2，二维码也需要对应放大以保持清晰
       const qrDataUrl = await QRCode.toDataURL(shareUrl, {
         margin: 2,           // 保留 quiet zone 以确保扫描器能识别边界
-        width: 128,          // 生成高清尺寸，绘制时缩放
-        errorCorrectionLevel: 'M', // 中等纠错级别
+        width: 256,          // 放大到 256px 确保 2x 缩放后仍清晰
+        errorCorrectionLevel: 'H', // 使用高纠错级别，提高扫描成功率
         color: {
           dark: '#000000',   // 标准黑色前景，确保对比度
           light: '#ffffff'   // 白色背景
@@ -87,7 +90,9 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
       // 3. 创建合成画布 (增加底部 Footer)
       // 参考水印相机设计：三栏布局，左-中-右
-      const footerHeight = 140;
+      // 注意：由于 html2canvas 使用了 scale=2，所有尺寸都需要 *2
+      const scale = 2;
+      const footerHeight = 140 * scale;
       
       // 计算裁剪区域（仅针对竖屏）
       const isPortrait = canvas.height > canvas.width;
@@ -129,53 +134,54 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       );
 
       // --- 绘制图例 (Legend) ---
-      const legendWidth = 140;
-      const legendPadding = 12;
-      const legendItemHeight = 24;
-      const legendHeight = legendPadding * 2 + 20 + rangeMinutes.length * legendItemHeight;
+      // 所有尺寸乘以 scale 以保持高清
+      const legendWidth = 140 * scale;
+      const legendPadding = 12 * scale;
+      const legendItemHeight = 24 * scale;
+      const legendHeight = legendPadding * 2 + 20 * scale + rangeMinutes.length * legendItemHeight;
       
-      const legendX = 20;
+      const legendX = 20 * scale;
       // Legend 定位基于裁剪后的地图高度
-      const legendY = mapHeight - legendHeight - 20;
+      const legendY = mapHeight - legendHeight - 20 * scale;
 
       // 图例背景
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-      ctx.shadowBlur = 10;
-      ctx.shadowOffsetY = 4;
+      ctx.shadowBlur = 10 * scale;
+      ctx.shadowOffsetY = 4 * scale;
       
-      const radius = 8;
+      const radius = 8 * scale;
       ctx.beginPath();
       ctx.roundRect(legendX, legendY, legendWidth, legendHeight, radius);
       ctx.fill();
       ctx.shadowColor = 'transparent';
 
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * scale;
       ctx.stroke();
 
       // 图例标题
       ctx.fillStyle = '#6b7280';
-      ctx.font = '600 12px system-ui, -apple-system, sans-serif';
+      ctx.font = `600 ${12 * scale}px system-ui, -apple-system, sans-serif`;
       ctx.textBaseline = 'top';
       ctx.fillText('等时圈范围', legendX + legendPadding, legendY + legendPadding);
 
       // 图例项
       rangeMinutes.forEach((minutes, index) => {
         const { color, fillColor } = getColorForRange(minutes);
-        const itemY = legendY + legendPadding + 20 + index * legendItemHeight;
+        const itemY = legendY + legendPadding + 20 * scale + index * legendItemHeight;
         
-        const boxSize = 16;
+        const boxSize = 16 * scale;
         ctx.fillStyle = fillColor;
         ctx.fillRect(legendX + legendPadding, itemY, boxSize, boxSize);
         
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 * scale;
         ctx.strokeRect(legendX + legendPadding, itemY, boxSize, boxSize);
 
         ctx.fillStyle = '#374151';
-        ctx.font = '500 12px system-ui, -apple-system, sans-serif';
-        ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8, itemY + 2);
+        ctx.font = `500 ${12 * scale}px system-ui, -apple-system, sans-serif`;
+        ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8 * scale, itemY + 2 * scale);
       });
 
       // ========== Footer 区域：仿水印相机三栏布局 ==========
@@ -187,18 +193,19 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
       // 顶部分割线
       ctx.strokeStyle = '#e5e7eb';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * scale;
       ctx.beginPath();
       ctx.moveTo(0, footerY);
       ctx.lineTo(finalCanvas.width, footerY);
       ctx.stroke();
 
-      const padding = 32;
+      const padding = 32 * scale;
       const canvasWidth = finalCanvas.width;
       
       // 计算三栏位置
-      const qrSize = 80;
-      const qrAreaWidth = qrSize + 24; // 二维码区域宽度（含扫码提示）
+      // 二维码尺寸放大以确保扫描清晰
+      const qrSize = 100 * scale; // 从 80 增大到 100
+      const qrAreaWidth = qrSize + 24 * scale; // 二维码区域宽度（含扫码提示）
       const leftColumnX = padding;
       const rightColumnX = canvasWidth - padding - qrAreaWidth;
       const centerX = canvasWidth / 2;
@@ -206,10 +213,10 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       // ========== 左栏：地点信息 ==========
       // 第一行：地点名称（主标题）
       ctx.fillStyle = '#111827';
-      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.font = `bold ${28 * scale}px system-ui, -apple-system, sans-serif`;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'left';
-      const leftLineY1 = footerY + 42;
+      const leftLineY1 = footerY + 42 * scale;
       ctx.fillText(landmark.name, leftColumnX, leftLineY1);
 
       // 第二行：出行方式 + 等时圈范围
@@ -221,45 +228,45 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
         : `${maxMinutes}min 可达范围`;
       
       ctx.fillStyle = '#6b7280';
-      ctx.font = '500 18px system-ui, -apple-system, sans-serif';
-      const leftLineY2 = footerY + 78;
+      ctx.font = `500 ${18 * scale}px system-ui, -apple-system, sans-serif`;
+      const leftLineY2 = footerY + 78 * scale;
       ctx.fillText(`${modeText}  |  ${rangeText}`, leftColumnX, leftLineY2);
 
       // 第三行：日期时间（仿水印相机）
       const now = new Date();
       const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       ctx.fillStyle = '#9ca3af';
-      ctx.font = '400 14px system-ui, -apple-system, sans-serif';
-      const leftLineY3 = footerY + 108;
+      ctx.font = `400 ${14 * scale}px system-ui, -apple-system, sans-serif`;
+      const leftLineY3 = footerY + 108 * scale;
       ctx.fillText(dateStr, leftColumnX, leftLineY3);
 
       // ========== 中栏：品牌 Logo + Slogan ==========
       ctx.textAlign = 'center';
       
       // Logo 图标（地图符号）
-      const logoSize = 32;
-      const logoY = footerY + 36;
+      const logoSize = 32 * scale;
+      const logoY = footerY + 36 * scale;
 
       // 绘制 Logo 背景圆角矩形
       ctx.fillStyle = '#10b981';
       ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
-      ctx.shadowBlur = 12;
-      ctx.shadowOffsetY = 2;
+      ctx.shadowBlur = 12 * scale;
+      ctx.shadowOffsetY = 2 * scale;
       ctx.beginPath();
-      ctx.roundRect(centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 8);
+      ctx.roundRect(centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 8 * scale);
       ctx.fill();
       ctx.shadowColor = 'transparent';
 
       // Logo 内的地图图标（简化绘制）
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 * scale;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       
       // 绘制地图图标
       const iconCenterX = centerX;
       const iconCenterY = logoY;
-      const iconSize = 14;
+      const iconSize = 14 * scale;
       
       // 地图折叠效果
       ctx.beginPath();
@@ -271,39 +278,39 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
       // 品牌名称
       ctx.fillStyle = '#111827';
-      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
-      ctx.fillText('可达出行', centerX, footerY + 72);
+      ctx.font = `bold ${20 * scale}px system-ui, -apple-system, sans-serif`;
+      ctx.fillText('可达出行', centerX, footerY + 72 * scale);
 
       // Slogan
       ctx.fillStyle = '#9ca3af';
-      ctx.font = '400 13px system-ui, -apple-system, sans-serif';
-      ctx.fillText('探索你的小时边界', centerX, footerY + 98);
+      ctx.font = `400 ${13 * scale}px system-ui, -apple-system, sans-serif`;
+      ctx.fillText('探索你的小时边界', centerX, footerY + 98 * scale);
 
       // 网址
       ctx.fillStyle = '#10b981';
-      ctx.font = '400 12px system-ui, -apple-system, sans-serif';
-      ctx.fillText('https://keda.kuhung.me', centerX, footerY + 118);
+      ctx.font = `400 ${12 * scale}px system-ui, -apple-system, sans-serif`;
+      ctx.fillText('https://keda.kuhung.me', centerX, footerY + 118 * scale);
 
       // ========== 右栏：二维码 + 扫码提示 ==========
       ctx.textAlign = 'right';
       
       // 二维码位置
       const qrX = canvasWidth - padding - qrSize;
-      const qrY = footerY + (footerHeight - qrSize - 20) / 2 + 4;
+      const qrY = footerY + (footerHeight - qrSize - 20 * scale) / 2 + 4 * scale;
 
       // 二维码白色背景（确保扫描）
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8);
+      ctx.fillRect(qrX - 4 * scale, qrY - 4 * scale, qrSize + 8 * scale, qrSize + 8 * scale);
       
       // 绘制二维码
       ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
       // 扫码提示文字
       ctx.fillStyle = '#9ca3af';
-      ctx.font = '400 11px system-ui, -apple-system, sans-serif';
+      ctx.font = `400 ${11 * scale}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = 'center';
       const qrCenterX = qrX + qrSize / 2;
-      ctx.fillText('扫码查看本地图', qrCenterX, qrY + qrSize + 16);
+      ctx.fillText('扫码查看本地图', qrCenterX, qrY + qrSize + 16 * scale);
 
       // 4. 导出图片
       finalCanvas.toBlob(async (blob) => {
