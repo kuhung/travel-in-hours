@@ -12,6 +12,53 @@ interface CitySelectorProps {
 export default function CitySelector({ selectedLandmark, onSelect }: CitySelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+
+  // 获取当前位置
+  const handleGetCurrentLocation = () => {
+    if (!('geolocation' in navigator)) {
+      alert('您的浏览器不支持地理定位');
+      return;
+    }
+
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        const currentLocation: CityLandmark = {
+          id: 'current-location',
+          name: '当前位置',
+          city: '我的位置',
+          province: '',
+          coordinates: [longitude, latitude],
+          description: '基于浏览器定位'
+        };
+        
+        onSelect(currentLocation);
+        setIsOpen(false);
+        setIsLocating(false);
+        setSearchQuery('');
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        let msg = '无法获取位置';
+        switch(error.code) {
+           case error.PERMISSION_DENIED: 
+             msg = window.isSecureContext 
+               ? '请允许浏览器访问位置信息' 
+               : '定位功能仅支持 HTTPS 或 localhost 访问';
+             break;
+           case error.POSITION_UNAVAILABLE: msg = '位置信息不可用'; break;
+           case error.TIMEOUT: msg = '获取位置超时'; break;
+        }
+        alert(msg);
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // 过滤地标
   const filteredLandmarks = useMemo(() => {
@@ -104,11 +151,29 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索城市或地标..."
                 autoFocus
-                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 
+                className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border border-gray-200 
                          rounded-lg text-gray-900 text-sm placeholder-gray-400
                          focus:outline-none focus:border-emerald-500 focus:bg-white
                          transition-all"
               />
+              
+              <button
+                onClick={handleGetCurrentLocation}
+                disabled={isLocating}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 
+                         text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 
+                         rounded-md transition-all disabled:opacity-50"
+                title="定位当前位置"
+              >
+                {isLocating ? (
+                  <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
 
