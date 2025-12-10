@@ -8,6 +8,7 @@ import { CityLandmark, TravelProfile } from '@/types';
 import { getColorForRange } from '@/data/isochrone-config';
 import { POIByLayer, formatLayerTime } from '@/lib/poi-utils';
 import { wgs84ToGcj02 } from '@/lib/coord-transform';
+import { WeChatShareModal } from '@/components/UI';
 
 interface ResultToolbarProps {
   landmark: CityLandmark | null;
@@ -26,6 +27,7 @@ export default function ResultToolbar({
 }: ResultToolbarProps) {
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [showWeChatModal, setShowWeChatModal] = useState(false);
 
   const generateShareUrl = () => {
     if (!landmark) return '';
@@ -650,8 +652,8 @@ export default function ResultToolbar({
         );
         break;
       case 'wechat':
-        // 微信分享主要依赖页面 meta 标签，提示用户使用自带分享功能
-        alert('请使用微信扫描页面二维码，点击右上角"..."分享给朋友');
+        // 打开微信分享弹窗
+        setShowWeChatModal(true);
         break;
     }
     
@@ -796,6 +798,18 @@ export default function ResultToolbar({
           </>
         )}
       </div>
+
+      {/* 微信分享弹窗 */}
+      <WeChatShareModal
+        isOpen={showWeChatModal}
+        onClose={() => setShowWeChatModal(false)}
+        shareUrl={generateShareUrl()}
+        landmarkName={landmark?.name || ''}
+        city={landmark?.city || ''}
+        travelMode={profile}
+        maxMinutes={rangeMinutes[rangeMinutes.length - 1]}
+        onSaveImage={handleShareImage}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { CityLandmark, TravelProfile } from '@/types';
 import { getColorForRange } from '@/data/isochrone-config';
 import { wgs84ToGcj02 } from '@/lib/coord-transform';
+import { WeChatShareModal } from '@/components/UI';
 
 interface ShareButtonProps {
   landmark: CityLandmark | null;
@@ -18,6 +19,7 @@ interface ShareButtonProps {
 export default function ShareButton({ landmark, profile, rangeMinutes, hasData = false }: ShareButtonProps) {
   const [showOptions, setShowOptions] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [showWeChatModal, setShowWeChatModal] = useState(false);
 
   const generateShareUrl = () => {
     if (!landmark) return '';
@@ -437,8 +439,8 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
         );
         break;
       case 'wechat':
-        // 微信分享主要依赖页面 meta 标签，提示用户使用自带分享功能
-        alert('请使用微信扫描页面二维码，点击右上角"..."分享给朋友');
+        // 打开微信分享弹窗
+        setShowWeChatModal(true);
         break;
     }
     
@@ -480,6 +482,72 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
     );
   }
 
+  // 复制链接处理
+  const handleCopyLink = async () => {
+    const url = generateShareUrl();
+    if (!url) return;
+    
+    let copySuccess = false;
+    
+    // 方法1: 尝试使用现代 Clipboard API
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(url);
+        copySuccess = true;
+      }
+    } catch (err) {
+      console.warn('Clipboard API failed:', err);
+    }
+    
+    // 方法2: 如果方法1失败，使用 execCommand 降级方案
+    if (!copySuccess) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        textarea.setAttribute('readonly', '');
+        document.body.appendChild(textarea);
+        
+        // iOS 需要特殊处理
+        if (navigator.userAgent.match(/ipad|iphone/i)) {
+          const range = document.createRange();
+          range.selectNodeContents(textarea);
+          const selection = window.getSelection();
+          if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+          textarea.setSelectionRange(0, 999999);
+        } else {
+          textarea.select();
+        }
+        
+        copySuccess = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed:', fallbackErr);
+      }
+    }
+    
+    // 根据结果显示反馈
+    if (copySuccess) {
+      track('share_copy_link', {
+        location: 'share_button',
+        landmark: landmark?.name || '',
+        city: landmark?.city || '',
+        travel_mode: profile,
+      });
+      
+      alert('链接已复制到剪贴板');
+    } else {
+      alert('复制失败，请手动复制链接');
+    }
+    
+    setShowOptions(false);
+  };
+
   return (
     <div className="relative">
       <button 
@@ -496,12 +564,24 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
         分享可达地图
       </button>
 
+      {/* 微信分享弹窗 */}
+      <WeChatShareModal
+        isOpen={showWeChatModal}
+        onClose={() => setShowWeChatModal(false)}
+        shareUrl={generateShareUrl()}
+        landmarkName={landmark?.name || ''}
+        city={landmark?.city || ''}
+        travelMode={profile}
+        maxMinutes={rangeMinutes[rangeMinutes.length - 1]}
+        onSaveImage={handleShareImage}
+      />
+
       {showOptions && (
         <div className="absolute bottom-full left-0 right-0 mb-2 
                         bg-white/98 backdrop-blur-xl border border-gray-200 rounded-xl 
                         shadow-2xl overflow-hidden animate-fade-in z-50">
           
-          {/* 生成图片按钮 - 替换了原来的复制链接 */}
+          {/* 生成图片按钮 */}
           <button
             onClick={handleShareImage}
             disabled={generating}
@@ -521,6 +601,21 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
               )}
             </div>
             <span>{generating ? '生成中...' : '保存分享图片'}</span>
+          </button>
+
+          {/* 复制链接按钮 */}
+          <button
+            onClick={handleCopyLink}
+            className="w-full px-4 py-3 text-left hover:bg-gray-50 
+                     transition-colors flex items-center gap-3 text-gray-700 text-sm"
+          >
+            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <span>复制链接</span>
           </button>
 
           <button

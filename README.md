@@ -98,6 +98,20 @@ src/
 └── types/                 # TypeScript 类型定义
 ```
 
+## 📊 数据监控
+
+项目集成了完整的用户行为和 API 健康监控，使用 Vercel Web Analytics。
+
+**查看详细文档**: [ANALYTICS.md](./ANALYTICS.md)
+
+监控功能包括:
+- ✅ 用户行为分析 (地标选择、出行方式、分享等)
+- ✅ 自定义生成次数追踪
+- ✅ API 限流和配额监控
+- ✅ 系统健康状态监控
+
+在 Vercel Dashboard 的 Analytics 标签中查看实时数据。
+
 ## 🔮 未来规划
 
 ### v1.1 - 景点发现
