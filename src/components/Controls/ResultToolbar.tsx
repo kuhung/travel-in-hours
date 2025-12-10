@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import { CityLandmark, TravelProfile } from '@/types';
 import { getColorForRange } from '@/data/isochrone-config';
 import { POIByLayer, formatLayerTime } from '@/lib/poi-utils';
+import { wgs84ToGcj02 } from '@/lib/coord-transform';
 
 interface ResultToolbarProps {
   landmark: CityLandmark | null;
@@ -52,6 +53,24 @@ export default function ResultToolbar({
       const mapElement = document.getElementById('app-map-container');
       if (!mapElement) {
         throw new Error('Map container not found');
+      }
+
+      // 0. 自动居中逻辑 (PC端和移动端)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const map = (window as any).__leaflet_map;
+      if (map && landmark) {
+        // 转换坐标为 GCJ-02 (因为地图使用的是高德底图，坐标系是 GCJ-02)
+        // landmark.coordinates 是 [lng, lat] (WGS-84)
+        const [lng, lat] = wgs84ToGcj02(landmark.coordinates[0], landmark.coordinates[1]);
+        
+        // 移动地图中心
+        map.setView([lat, lng], map.getZoom(), { 
+          animate: false // 瞬间移动，减少动画带来的截图不确定性
+        });
+
+        // 等待瓦片加载
+        // 鉴于瓦片加载需要网络，给一点缓冲时间
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
 
       // 1. 截图地图

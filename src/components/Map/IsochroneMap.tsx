@@ -308,6 +308,14 @@ function MapControllerWrapper({
   landmark: CityLandmark | null;
 }) {
   const map = useMapHook();
+
+  // 暴露 map 实例给 window 对象，以便在截图时控制
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__leaflet_map = map;
+    }
+  }, [map]);
   
   // 基础视图控制
   useEffect(() => {

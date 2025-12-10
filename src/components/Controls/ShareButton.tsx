@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { CityLandmark, TravelProfile } from '@/types';
 import { getColorForRange } from '@/data/isochrone-config';
+import { wgs84ToGcj02 } from '@/lib/coord-transform';
 
 interface ShareButtonProps {
   landmark: CityLandmark | null;
@@ -44,6 +45,15 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       const mapElement = document.getElementById('app-map-container');
       if (!mapElement) {
         throw new Error('Map container not found');
+      }
+
+      // 0. 自动居中逻辑
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const map = (window as any).__leaflet_map;
+      if (map && landmark) {
+        const [lng, lat] = wgs84ToGcj02(landmark.coordinates[0], landmark.coordinates[1]);
+        map.setView([lat, lng], map.getZoom(), { animate: false });
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
 
       // 1. 截图地图
