@@ -63,11 +63,12 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       // 2. 生成二维码
       const shareUrl = generateShareUrl();
       const qrDataUrl = await QRCode.toDataURL(shareUrl, {
-        margin: 0,
-        width: 80,
+        margin: 2,           // 保留 quiet zone 以确保扫描器能识别边界
+        width: 128,          // 生成高清尺寸，绘制时缩放
+        errorCorrectionLevel: 'M', // 中等纠错级别
         color: {
-          dark: '#9ca3af', // gray-400
-          light: '#00000000' // 透明背景
+          dark: '#000000',   // 标准黑色前景，确保对比度
+          light: '#ffffff'   // 白色背景
         }
       });
       const qrImage = new Image();
