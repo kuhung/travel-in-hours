@@ -1,5 +1,6 @@
 'use client';
 
+import { track } from '@vercel/analytics';
 import { TravelProfile } from '@/types';
 import { travelProfiles } from '@/data/isochrone-config';
 
@@ -28,6 +29,17 @@ const TravelIcons: Record<TravelProfile, React.ReactNode> = {
 };
 
 export default function TravelModeSelector({ selected, onSelect }: TravelModeSelectorProps) {
+  const handleModeSelect = (profileId: TravelProfile) => {
+    // 追踪出行方式切换事件
+    track('travel_mode_changed', {
+      location: 'mode_selector',
+      mode: profileId,
+      previous_mode: selected
+    });
+    
+    onSelect(profileId);
+  };
+  
   return (
     <div className="flex gap-2">
       {travelProfiles.map((profile) => {
@@ -35,7 +47,7 @@ export default function TravelModeSelector({ selected, onSelect }: TravelModeSel
         return (
           <button
             key={profile.id}
-            onClick={() => onSelect(profile.id)}
+            onClick={() => handleModeSelect(profile.id)}
             className={`flex-1 flex flex-col items-center gap-1.5 px-3 py-3 
                        rounded-xl border-2 transition-all duration-200
                        ${isSelected

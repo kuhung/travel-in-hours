@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { track } from '@vercel/analytics/server';
 import { fetchIsochrones } from '@/lib/ors-client';
 import { TravelProfile } from '@/types';
 
@@ -56,12 +57,43 @@ export async function POST(request: NextRequest) {
       apiKey
     );
 
+    // 追踪成功的 API 调用
+    track('ors_api_success', {
+      location: 'api_route',
+      profile,
+      range_count: rangeMinutes.length
+    });
+
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Isochrones API error:', error);
     
     const status = error.status || 500;
     const message = error.message || '未知错误';
+    
+    // 追踪 ORS API 错误
+    const errorType = 
+      status === 429 ? 'ors_rate_limit' :
+      status === 403 ? 'ors_forbidden' :
+      status === 401 ? 'ors_unauthorized' :
+      status === 500 ? 'ors_server_error' :
+      status === 503 ? 'ors_service_unavailable' :
+      `ors_error_${status}`;
+    
+    // 服务端事件追踪
+    track(errorType, {
+      location: 'api_route',
+      status_code: status,
+      error_message: message.substring(0, 100)
+    });
+    
+    // 特别标记限流事件
+    if (status === 429) {
+      track('ors_daily_quota_exceeded', {
+        location: 'api_route',
+        timestamp: new Date().toISOString()
+      });
+    }
     
     return NextResponse.json(
       { error: message },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { track } from '@vercel/analytics';
 import { IsochroneFeature, TravelProfile } from '@/types';
 import { getCachedIsochrones, setCachedIsochrones } from '@/lib/isochrone-cache';
 import { snapToGrid } from '@/lib/grid';
@@ -61,7 +62,35 @@ export function useIsochrones(): UseIsochronesResult {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `请求失败: ${response.status}`);
+        const errorMessage = errorData.error || `请求失败: ${response.status}`;
+        
+        // 追踪 API 错误事件 - 区分不同错误类型
+        const errorType = 
+          response.status === 429 ? 'rate_limit' :
+          response.status === 403 ? 'forbidden' :
+          response.status === 401 ? 'unauthorized' :
+          response.status === 500 ? 'server_error' :
+          response.status === 503 ? 'service_unavailable' :
+          `http_${response.status}`;
+        
+        track('api_error', {
+          location: 'isochrones_hook',
+          error_type: errorType,
+          status_code: response.status,
+          profile,
+          error_message: errorMessage.substring(0, 100) // 限制长度
+        });
+        
+        // 特别追踪限流事件
+        if (response.status === 429) {
+          track('api_rate_limit_reached', {
+            location: 'isochrones_hook',
+            profile,
+            coordinates: `${coordinates[0].toFixed(4)},${coordinates[1].toFixed(4)}`
+          });
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -73,9 +102,27 @@ export function useIsochrones(): UseIsochronesResult {
       if (features.length > 0) {
         setCachedIsochrones(coordinates, profile, rangeMinutes, features);
       }
+      
+      // 追踪 API 调用成功
+      track('api_call_success', {
+        location: 'isochrones_hook',
+        profile,
+        range_count: rangeMinutes.length
+      });
+      
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : '获取数据失败';
+      
+      // 如果是网络错误（不是 HTTP 错误），也要追踪
+      if (!(err instanceof Error && err.message.includes('请求失败'))) {
+        track('api_network_error', {
+          location: 'isochrones_hook',
+          profile,
+          error_message: message.substring(0, 100)
+        });
+      }
+      
       setError(message);
       setIsochrones([]);
       return false;

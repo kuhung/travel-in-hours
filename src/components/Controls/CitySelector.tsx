@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { track } from '@vercel/analytics';
 import { CityLandmark } from '@/types';
 import { cityLandmarks, landmarksByCity } from '@/data/landmarks';
 
@@ -17,15 +18,28 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
   // 获取当前位置
   const handleGetCurrentLocation = () => {
     if (!('geolocation' in navigator)) {
+      track('geolocation_unsupported', {
+        location: 'city_selector'
+      });
       alert('您的浏览器不支持地理定位');
       return;
     }
 
+    track('geolocation_requested', {
+      location: 'city_selector'
+    });
+    
     setIsLocating(true);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        
+        track('geolocation_success', {
+          location: 'city_selector',
+          latitude: latitude.toFixed(4),
+          longitude: longitude.toFixed(4)
+        });
         
         const currentLocation: CityLandmark = {
           id: 'current-location',
@@ -44,15 +58,30 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
       (error) => {
         console.error('Geolocation error:', error);
         let msg = '无法获取位置';
+        let errorType = 'unknown';
+        
         switch(error.code) {
            case error.PERMISSION_DENIED: 
+             errorType = 'permission_denied';
              msg = window.isSecureContext 
                ? '请允许浏览器访问位置信息' 
                : '定位功能仅支持 HTTPS 或 localhost 访问';
              break;
-           case error.POSITION_UNAVAILABLE: msg = '位置信息不可用'; break;
-           case error.TIMEOUT: msg = '获取位置超时'; break;
+           case error.POSITION_UNAVAILABLE: 
+             errorType = 'position_unavailable';
+             msg = '位置信息不可用'; 
+             break;
+           case error.TIMEOUT: 
+             errorType = 'timeout';
+             msg = '获取位置超时'; 
+             break;
         }
+        
+        track('geolocation_error', {
+          location: 'city_selector',
+          error_type: errorType
+        });
+        
         alert(msg);
         setIsLocating(false);
       },
@@ -82,6 +111,14 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
   }, [searchQuery]);
 
   const handleSelect = (landmark: CityLandmark) => {
+    // 追踪地标选择事件
+    track('landmark_selected', {
+      location: 'selector',
+      city: landmark.city,
+      landmark_name: landmark.name,
+      is_current_location: landmark.id === 'current-location'
+    });
+    
     onSelect(landmark);
     setIsOpen(false);
     setSearchQuery('');

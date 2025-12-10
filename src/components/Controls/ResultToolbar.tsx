@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { CityLandmark, TravelProfile } from '@/types';
@@ -47,6 +48,15 @@ export default function ResultToolbar({
 
   const handleShareImage = async () => {
     if (generating || !landmark) return;
+    
+    // 追踪工具栏图片生成开始事件
+    track('toolbar_share_image_started', {
+      location: 'result_toolbar',
+      landmark: landmark.name,
+      city: landmark.city,
+      travel_mode: profile
+    });
+    
     setGenerating(true);
 
     try {
@@ -545,9 +555,29 @@ export default function ResultToolbar({
         try {
           const item = new ClipboardItem({ 'image/png': blob });
           await navigator.clipboard.write([item]);
+          
+          // 追踪工具栏图片生成成功事件(剪贴板)
+          track('toolbar_share_image_success', {
+            location: 'result_toolbar',
+            method: 'clipboard',
+            landmark: landmark.name,
+            city: landmark.city,
+            travel_mode: profile
+          });
+          
           alert('图片已生成并复制到剪贴板！');
         } catch (err) {
           console.warn('Clipboard API failed, falling back to download', err);
+          
+          // 追踪工具栏图片生成成功事件(下载)
+          track('toolbar_share_image_success', {
+            location: 'result_toolbar',
+            method: 'download',
+            landmark: landmark.name,
+            city: landmark.city,
+            travel_mode: profile
+          });
+          
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -561,6 +591,15 @@ export default function ResultToolbar({
 
     } catch (err) {
       console.error('Screenshot failed:', err);
+      
+      // 追踪工具栏图片生成失败事件
+      track('toolbar_share_image_error', {
+        location: 'result_toolbar',
+        landmark: landmark.name,
+        city: landmark.city,
+        error: err instanceof Error ? err.message : 'unknown'
+      });
+      
       alert('生成图片失败，请重试');
     } finally {
       setGenerating(false);
@@ -571,6 +610,15 @@ export default function ResultToolbar({
   const handleShare = async (platform: 'weibo' | 'twitter' | 'wechat') => {
     const url = generateShareUrl();
     if (!url) return;
+    
+    // 追踪工具栏社交媒体分享事件
+    track('toolbar_social_share_clicked', {
+      location: 'result_toolbar',
+      platform,
+      landmark: landmark?.name || '',
+      city: landmark?.city || '',
+      travel_mode: profile
+    });
     
     const maxMinutes = rangeMinutes[rangeMinutes.length - 1];
     const hours = Math.round((maxMinutes / 60) * 10) / 10;
@@ -609,6 +657,18 @@ export default function ResultToolbar({
     
     setShowShareOptions(false);
   };
+  
+  const handleEdit = () => {
+    // 追踪编辑按钮点击事件
+    track('edit_button_clicked', {
+      location: 'result_toolbar',
+      landmark: landmark?.name || '',
+      city: landmark?.city || '',
+      travel_mode: profile
+    });
+    
+    onEdit();
+  };
 
   const profileName = profile === 'driving-car' 
     ? '驾车' 
@@ -620,7 +680,7 @@ export default function ResultToolbar({
     <div className="absolute top-4 right-4 z-30 flex items-stretch gap-2">
       {/* 编辑按钮 */}
       <button
-        onClick={onEdit}
+        onClick={handleEdit}
         className="
           bg-white/90 backdrop-blur shadow-lg border border-white/20
           text-gray-700 hover:bg-white hover:text-emerald-600

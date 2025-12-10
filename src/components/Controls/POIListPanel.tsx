@@ -1,5 +1,6 @@
 'use client';
 
+import { track } from '@vercel/analytics';
 import { POIByLayer, formatLayerTime } from '@/lib/poi-utils';
 
 interface POIListPanelProps {
@@ -14,6 +15,18 @@ export default function POIListPanel({
   onPOIClick,
 }: POIListPanelProps) {
   const totalPOIs = poiByLayer.reduce((sum, layer) => sum + layer.points.length, 0);
+
+  const handlePOIClick = (poi: typeof poiByLayer[0]['points'][0], layerMinutes: number) => {
+    // 追踪POI点击事件
+    track('poi_clicked', {
+      location: 'poi_list',
+      poi_name: poi.name,
+      poi_index: poi.index,
+      layer_minutes: layerMinutes
+    });
+    
+    onPOIClick?.(poi.index);
+  };
 
   if (totalPOIs === 0) return null;
 
@@ -78,7 +91,7 @@ export default function POIListPanel({
                   "
                   onMouseEnter={() => onPOIHover?.(poi.index)}
                   onMouseLeave={() => onPOIHover?.(null)}
-                  onClick={() => onPOIClick?.(poi.index)}
+                  onClick={() => handlePOIClick(poi, layer.layerMinutes)}
                 >
                   {/* 编号 */}
                   <div

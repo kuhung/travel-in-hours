@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
+import { track } from '@vercel/analytics';
 import { CityLandmark, TravelProfile } from '@/types';
 import { defaultTimeRanges } from '@/data/isochrone-config';
 import { getLandmarkById } from '@/data/landmarks';
@@ -87,8 +88,31 @@ function IsochroneAppContent() {
 
     // 如果没有缓存且超过限制（仅限自定义选点）
     if (isCustomLandmark && !cached && !checkLimit()) {
+      track('analysis_limit_reached', {
+        location: 'generate_button',
+        landmark: selectedLandmark.name,
+        remaining_quota: remaining
+      });
       alert('今日自定义选点次数已达上限（5次）。请明天再试！');
       return;
+    }
+    
+    // 追踪分析开始事件（区分自定义和预设）
+    if (isCustomLandmark) {
+      track('custom_analysis_started', {
+        location: 'generate_button',
+        travel_mode: profile,
+        is_cached: !!cached,
+        remaining_quota: remaining
+      });
+    } else {
+      track('preset_analysis_started', {
+        location: 'generate_button',
+        landmark: selectedLandmark.name,
+        city: selectedLandmark.city,
+        travel_mode: profile,
+        is_cached: !!cached
+      });
     }
     
     const success = await fetchIsochrones(
@@ -97,19 +121,54 @@ function IsochroneAppContent() {
       rangeMinutes
     );
     
+    if (success) {
+      // 追踪分析成功事件
+      if (isCustomLandmark) {
+        track('custom_analysis_completed', {
+          location: 'generate_button',
+          travel_mode: profile,
+          is_cached: !!cached,
+          quota_used: !cached ? 1 : 0,
+          remaining_quota: !cached ? remaining - 1 : remaining
+        });
+      } else {
+        track('preset_analysis_completed', {
+          location: 'generate_button',
+          landmark: selectedLandmark.name,
+          city: selectedLandmark.city,
+          travel_mode: profile,
+          is_cached: !!cached
+        });
+      }
+    }
+    
     // 如果成功且未使用缓存，扣除次数（仅限自定义选点）
     if (success && !cached && isCustomLandmark) {
       increment();
+      
+      // 追踪配额使用
+      track('custom_quota_used', {
+        location: 'generate_button',
+        new_remaining: remaining - 1,
+        travel_mode: profile
+      });
     }
     
     // 生成成功后，折叠面板
     if (success) {
       setIsPanelOpen(false); 
     }
-  }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones, checkLimit, increment]);
+  }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones, checkLimit, increment, remaining]);
 
   // 地图点击处理
   const handleMapClick = useCallback((lat: number, lng: number) => {
+    // 追踪地图自定义选点事件
+    track('map_custom_point_created', {
+      location: 'map',
+      latitude: lat.toFixed(4),
+      longitude: lng.toFixed(4)
+    });
+    
     const customLandmark: CityLandmark = {
       id: `custom-${Date.now()}`,
       name: '自定义选点',

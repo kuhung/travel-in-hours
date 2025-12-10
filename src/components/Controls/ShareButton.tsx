@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { CityLandmark, TravelProfile } from '@/types';
@@ -39,6 +40,16 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
   const handleShareImage = async () => {
     if (generating || !landmark || !hasData) return;
+    
+    // 追踪图片生成开始事件
+    track('share_image_started', {
+      location: 'share_button',
+      landmark: landmark.name,
+      city: landmark.city,
+      travel_mode: profile,
+      max_range: rangeMinutes[rangeMinutes.length - 1]
+    });
+    
     setGenerating(true);
 
     try {
@@ -330,9 +341,29 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
           // 只有 png 支持较好
           const item = new ClipboardItem({ 'image/png': blob });
           await navigator.clipboard.write([item]);
+          
+          // 追踪图片生成成功事件(剪贴板)
+          track('share_image_success', {
+            location: 'share_button',
+            method: 'clipboard',
+            landmark: landmark.name,
+            city: landmark.city,
+            travel_mode: profile
+          });
+          
           alert('图片已生成并复制到剪贴板！');
         } catch (err) {
           console.warn('Clipboard API failed, falling back to download', err);
+          
+          // 追踪图片生成成功事件(下载)
+          track('share_image_success', {
+            location: 'share_button',
+            method: 'download',
+            landmark: landmark.name,
+            city: landmark.city,
+            travel_mode: profile
+          });
+          
           // 降级：下载
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -347,6 +378,15 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
 
     } catch (err) {
       console.error('Screenshot failed:', err);
+      
+      // 追踪图片生成失败事件
+      track('share_image_error', {
+        location: 'share_button',
+        landmark: landmark.name,
+        city: landmark.city,
+        error: err instanceof Error ? err.message : 'unknown'
+      });
+      
       alert('生成图片失败，请重试');
     } finally {
       setGenerating(false);
@@ -356,6 +396,16 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
   const handleShare = async (platform: 'weibo' | 'twitter' | 'wechat') => {
     const url = generateShareUrl();
     if (!url) return;
+    
+    // 追踪社交媒体分享事件
+    track('social_share_clicked', {
+      location: 'share_button',
+      platform,
+      landmark: landmark?.name || '',
+      city: landmark?.city || '',
+      travel_mode: profile,
+      max_range: rangeMinutes[rangeMinutes.length - 1]
+    });
     
     const maxMinutes = rangeMinutes[rangeMinutes.length - 1];
     const hours = Math.round((maxMinutes / 60) * 10) / 10;
