@@ -237,9 +237,21 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
     const url = generateShareUrl();
     if (!url) return;
     
-    const title = `${landmark?.name} ${rangeMinutes[rangeMinutes.length - 1] >= 60 
-      ? `${rangeMinutes[rangeMinutes.length - 1] / 60}小时` 
-      : `${rangeMinutes[rangeMinutes.length - 1]}分钟`}可达地图`;
+    const maxMinutes = rangeMinutes[rangeMinutes.length - 1];
+    const hours = Math.round((maxMinutes / 60) * 10) / 10;
+    
+    let title = '';
+    if (profile === 'driving-car') {
+      title = `🚗 一脚油门，从${landmark?.name}出发${hours}小时能逃离到哪里？我的周末逃离计划已生成！`;
+    } else if (profile === 'cycling-regular') {
+      title = maxMinutes <= 60 
+        ? `🚴‍♀️ 在${landmark?.name}骑行${maxMinutes}分钟能去哪？我的城市漫游地图已生成！`
+        : `🚴‍♀️ 挑战自我！从${landmark?.name}出发骑行${hours}小时，探索城市边界。`;
+    } else {
+      title = maxMinutes <= 60
+        ? `🚶 丈量${landmark?.name}，发现身边未知的惊喜。你的1小时生活圈有多大？`
+        : `🚶 从${landmark?.name}出发步行${hours}小时，这是我的城市探索足迹。`;
+    }
     
     switch (platform) {
       case 'weibo':
@@ -255,7 +267,8 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
         );
         break;
       case 'wechat':
-        alert('请使用微信扫描页面二维码分享');
+        // 微信分享主要依赖页面 meta 标签，提示用户使用自带分享功能
+        alert('请使用微信扫描页面二维码，点击右上角"..."分享给朋友');
         break;
     }
     

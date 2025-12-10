@@ -14,20 +14,23 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "出行可达地图 | Travel Reach Map",
-  description: "基于 OpenRouteService 实时交通数据，查看从城市地标出发 1-3 小时内可达的区域。支持驾车、骑行、步行等多种出行方式。",
-  keywords: ["可达地图", "等时圈", "通勤范围", "OpenRouteService", "交通分析", "城市交通"],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://keda.kuhung.me'),
+  title: "出行可达地图 | 你的3小时逃离计划生成器",
+  description: "输入出发地，一键生成1-3小时内的可达范围。无论是周末自驾逃离城市，还是城市漫步探索未知，发现你的生活半径极限。",
+  keywords: ["可达地图", "等时圈", "周末去哪儿", "逃离北上广", "自驾游规划", "生活圈可视化", "OpenRouteService", "交通分析"],
   authors: [{ name: "kuhung", url: "https://kuhung.me/about" }],
   openGraph: {
-    title: "出行可达地图",
-    description: "查看从城市地标出发，指定时间内可达的区域",
+    title: "出行可达地图 | 发现你的生活边界",
+    description: "在这个城市，你的自由半径有多大？一键生成你的1-3小时出行圈。🚗 🚴‍♀️ 🚶",
     type: "website",
     locale: "zh_CN",
+    siteName: "出行可达地图",
   },
   twitter: {
     card: "summary_large_image",
-    title: "出行可达地图",
-    description: "查看从城市地标出发，指定时间内可达的区域",
+    title: "出行可达地图 | 发现你的生活边界",
+    description: "在这个城市，你的自由半径有多大？一键生成你的1-3小时出行圈。",
+    creator: "@kuhung",
   },
 };
 
