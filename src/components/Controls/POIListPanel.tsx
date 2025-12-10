@@ -44,7 +44,7 @@ export default function POIListPanel({
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-800">可达地点清单</h2>
+            <h2 className="text-lg font-bold text-gray-800">可达热点清单</h2>
             <p className="text-xs text-gray-500">共 {totalPOIs} 个地点按圈层分布</p>
           </div>
         </div>
