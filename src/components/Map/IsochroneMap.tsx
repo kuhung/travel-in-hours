@@ -28,6 +28,7 @@ export default function IsochroneMap({
       className?: string;
       scrollWheelZoom?: boolean;
       zoomControl?: boolean;
+      preferCanvas?: boolean;
       children?: React.ReactNode;
     }>;
     TileLayer: React.ComponentType<{ 
