@@ -76,12 +76,13 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       await new Promise((resolve) => { qrImage.onload = resolve; });
 
       // 3. 创建合成画布 (增加底部 Footer)
-      const footerHeight = 160;
+      // 参考水印相机设计：三栏布局，左-中-右
+      const footerHeight = 140;
       const finalCanvas = document.createElement('canvas');
       const ctx = finalCanvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
 
-      // 设置高倍率以保证清晰度 (简单的做法是直接用 html2canvas 的结果尺寸，通常已经是屏幕分辨率)
+      // 设置高倍率以保证清晰度
       finalCanvas.width = canvas.width;
       finalCanvas.height = canvas.height + footerHeight;
 
@@ -93,36 +94,32 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       ctx.drawImage(canvas, 0, 0);
 
       // --- 绘制图例 (Legend) ---
-      // 样式参考 MapLegend.tsx
-      // 位置：地图区域左下角，距离底部稍微留一点空隙 (Footer 之上)
       const legendWidth = 140;
       const legendPadding = 12;
       const legendItemHeight = 24;
-      const legendHeight = legendPadding * 2 + 20 + rangeMinutes.length * legendItemHeight; // 标题高度约20
+      const legendHeight = legendPadding * 2 + 20 + rangeMinutes.length * legendItemHeight;
       
-      const legendX = 20; // 左边距
-      const legendY = canvas.height - legendHeight - 20; // 距离地图底边 20px
+      const legendX = 20;
+      const legendY = canvas.height - legendHeight - 20;
 
       // 图例背景
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // white/90
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
       ctx.shadowBlur = 10;
       ctx.shadowOffsetY = 4;
       
-      // 绘制圆角矩形背景
       const radius = 8;
       ctx.beginPath();
       ctx.roundRect(legendX, legendY, legendWidth, legendHeight, radius);
       ctx.fill();
-      ctx.shadowColor = 'transparent'; // 重置阴影
+      ctx.shadowColor = 'transparent';
 
-      // 边框
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
       // 图例标题
-      ctx.fillStyle = '#6b7280'; // gray-500
+      ctx.fillStyle = '#6b7280';
       ctx.font = '600 12px system-ui, -apple-system, sans-serif';
       ctx.textBaseline = 'top';
       ctx.fillText('等时圈范围', legendX + legendPadding, legendY + legendPadding);
@@ -132,75 +129,145 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
         const { color, fillColor } = getColorForRange(minutes);
         const itemY = legendY + legendPadding + 20 + index * legendItemHeight;
         
-        // 色块
         const boxSize = 16;
-        ctx.fillStyle = fillColor; // 填充色
+        ctx.fillStyle = fillColor;
         ctx.fillRect(legendX + legendPadding, itemY, boxSize, boxSize);
         
-        // 色块边框
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
         ctx.strokeRect(legendX + legendPadding, itemY, boxSize, boxSize);
 
-        // 文字
-        ctx.fillStyle = '#374151'; // gray-700
+        ctx.fillStyle = '#374151';
         ctx.font = '500 12px system-ui, -apple-system, sans-serif';
         ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8, itemY + 2);
       });
 
-      // 绘制 Footer 背景
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, canvas.height, finalCanvas.width, footerHeight);
+      // ========== Footer 区域：仿水印相机三栏布局 ==========
+      const footerY = canvas.height;
+      
+      // Footer 背景 - 浅灰色底，更有质感
+      ctx.fillStyle = '#fafafa';
+      ctx.fillRect(0, footerY, finalCanvas.width, footerHeight);
 
-      // 绘制分割线
-      ctx.strokeStyle = '#f3f4f6';
+      // 顶部分割线
+      ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, canvas.height);
-      ctx.lineTo(finalCanvas.width, canvas.height);
+      ctx.moveTo(0, footerY);
+      ctx.lineTo(finalCanvas.width, footerY);
       ctx.stroke();
 
-      // --- 绘制文字 ---
-      const padding = 40;
-      let textY = canvas.height + 36;
-
-      // 标题: 地点名称
-      ctx.fillStyle = '#111827'; // gray-900
-      ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
-      ctx.textBaseline = 'top';
-      ctx.fillText(landmark.name, padding, textY);
+      const padding = 32;
+      const canvasWidth = finalCanvas.width;
       
-      textY += 50;
+      // 计算三栏位置
+      const qrSize = 80;
+      const qrAreaWidth = qrSize + 24; // 二维码区域宽度（含扫码提示）
+      const leftColumnX = padding;
+      const rightColumnX = canvasWidth - padding - qrAreaWidth;
+      const centerX = canvasWidth / 2;
 
-      // 副标题: 出行方式与坐标
-      ctx.fillStyle = '#4b5563'; // gray-600
-      ctx.font = '500 24px system-ui, -apple-system, sans-serif';
-      
+      // ========== 左栏：地点信息 ==========
+      // 第一行：地点名称（主标题）
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      const leftLineY1 = footerY + 42;
+      ctx.fillText(landmark.name, leftColumnX, leftLineY1);
+
+      // 第二行：出行方式 + 等时圈范围
       const modeText = profile === 'driving-car' ? '驾车' : 
                        profile === 'cycling-regular' ? '骑行' : '步行';
+      const maxMinutes = rangeMinutes[rangeMinutes.length - 1];
+      const rangeText = maxMinutes >= 60 
+        ? `${Math.round(maxMinutes / 60 * 10) / 10}h 可达范围`
+        : `${maxMinutes}min 可达范围`;
       
-      const coordText = `${landmark.coordinates[1].toFixed(4)}, ${landmark.coordinates[0].toFixed(4)}`;
-      
-      ctx.fillText(`${modeText} · ${coordText}`, padding, textY);
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '500 18px system-ui, -apple-system, sans-serif';
+      const leftLineY2 = footerY + 78;
+      ctx.fillText(`${modeText}  |  ${rangeText}`, leftColumnX, leftLineY2);
 
-      textY += 36;
+      // 第三行：日期时间（仿水印相机）
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '400 14px system-ui, -apple-system, sans-serif';
+      const leftLineY3 = footerY + 108;
+      ctx.fillText(dateStr, leftColumnX, leftLineY3);
+
+      // ========== 中栏：品牌 Logo + Slogan ==========
+      ctx.textAlign = 'center';
+      
+      // Logo 图标（地图符号）
+      const logoSize = 32;
+      const logoY = footerY + 36;
+
+      // 绘制 Logo 背景圆角矩形
+      ctx.fillStyle = '#10b981';
+      ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 2;
+      ctx.beginPath();
+      ctx.roundRect(centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 8);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      // Logo 内的地图图标（简化绘制）
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      // 绘制地图图标
+      const iconCenterX = centerX;
+      const iconCenterY = logoY;
+      const iconSize = 14;
+      
+      // 地图折叠效果
+      ctx.beginPath();
+      ctx.moveTo(iconCenterX - iconSize, iconCenterY + iconSize / 2);
+      ctx.lineTo(iconCenterX - iconSize / 3, iconCenterY - iconSize / 2);
+      ctx.lineTo(iconCenterX + iconSize / 3, iconCenterY + iconSize / 2);
+      ctx.lineTo(iconCenterX + iconSize, iconCenterY - iconSize / 2);
+      ctx.stroke();
+
+      // 品牌名称
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+      ctx.fillText('可达出行', centerX, footerY + 72);
+
+      // Slogan
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '400 13px system-ui, -apple-system, sans-serif';
+      ctx.fillText('探索你的可达边界', centerX, footerY + 98);
 
       // 网址
-      ctx.fillStyle = '#059669'; // emerald-600
-      ctx.font = '20px system-ui, -apple-system, sans-serif';
-      ctx.fillText('https://keda.kuhung.me', padding, textY);
+      ctx.fillStyle = '#10b981';
+      ctx.font = '400 12px system-ui, -apple-system, sans-serif';
+      ctx.fillText('keda.kuhung.me', centerX, footerY + 118);
 
-      // --- 绘制二维码 ---
-      const qrSize = 96;
-      const qrX = finalCanvas.width - padding - qrSize;
-      const qrY = canvas.height + (footerHeight - qrSize) / 2;
-
-      // QR 背景 (可选，现在是透明的)
-      // ctx.fillStyle = '#f3f4f6';
-      // ctx.fillRect(qrX, qrY, qrSize, qrSize);
+      // ========== 右栏：二维码 + 扫码提示 ==========
+      ctx.textAlign = 'right';
       
-      // 绘制二维码图片
+      // 二维码位置
+      const qrX = canvasWidth - padding - qrSize;
+      const qrY = footerY + (footerHeight - qrSize - 20) / 2 + 4;
+
+      // 二维码白色背景（确保扫描）
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8);
+      
+      // 绘制二维码
       ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      // 扫码提示文字
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '400 11px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      const qrCenterX = qrX + qrSize / 2;
+      ctx.fillText('扫码查看', qrCenterX, qrY + qrSize + 16);
 
       // 4. 导出图片
       finalCanvas.toBlob(async (blob) => {
