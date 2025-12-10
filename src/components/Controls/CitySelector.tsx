@@ -149,7 +149,7 @@ export default function CitySelector({ selectedLandmark, onSelect }: CitySelecto
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索城市或地标..."
+                placeholder="搜索地标 / 点击右侧定位"
                 autoFocus
                 className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border border-gray-200 
                          rounded-lg text-gray-900 text-sm placeholder-gray-400
