@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY_PREFIX = 'isochrone_usage_';
-const MAX_DAILY_LIMIT = 1;
+const MAX_DAILY_LIMIT = 5;
 
 export function useSelectionLimit() {
   const [count, setCount] = useState(0);
