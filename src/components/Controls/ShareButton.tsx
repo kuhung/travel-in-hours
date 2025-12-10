@@ -267,7 +267,7 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       ctx.font = '400 11px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
       const qrCenterX = qrX + qrSize / 2;
-      ctx.fillText('扫码查看', qrCenterX, qrY + qrSize + 16);
+      ctx.fillText('扫码查看本地图', qrCenterX, qrY + qrSize + 16);
 
       // 4. 导出图片
       finalCanvas.toBlob(async (blob) => {
