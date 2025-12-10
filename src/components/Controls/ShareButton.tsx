@@ -78,20 +78,45 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       // 3. 创建合成画布 (增加底部 Footer)
       // 参考水印相机设计：三栏布局，左-中-右
       const footerHeight = 140;
+      
+      // 计算裁剪区域（仅针对竖屏）
+      const isPortrait = canvas.height > canvas.width;
+      let mapWidth = canvas.width;
+      let mapHeight = canvas.height;
+      let sourceY = 0;
+
+      if (isPortrait) {
+        // 竖屏模式：确保最终图片比例为 3:4 (0.75)
+        // TotalHeight = Width / 0.75
+        const targetTotalHeight = mapWidth / 0.75;
+        // MapHeight = TotalHeight - FooterHeight
+        const targetMapHeight = targetTotalHeight - footerHeight;
+
+        // 如果原始地图高度大于目标高度，则进行居中裁剪
+        if (canvas.height > targetMapHeight) {
+          mapHeight = targetMapHeight;
+          sourceY = (canvas.height - mapHeight) / 2;
+        }
+      }
+
       const finalCanvas = document.createElement('canvas');
       const ctx = finalCanvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
 
       // 设置高倍率以保证清晰度
-      finalCanvas.width = canvas.width;
-      finalCanvas.height = canvas.height + footerHeight;
+      finalCanvas.width = mapWidth;
+      finalCanvas.height = mapHeight + footerHeight;
 
       // 绘制背景 (白色)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-      // 绘制地图
-      ctx.drawImage(canvas, 0, 0);
+      // 绘制地图 (支持裁剪)
+      ctx.drawImage(
+        canvas,
+        0, sourceY, mapWidth, mapHeight, // source x, y, w, h
+        0, 0, mapWidth, mapHeight        // dest x, y, w, h
+      );
 
       // --- 绘制图例 (Legend) ---
       const legendWidth = 140;
@@ -100,7 +125,8 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       const legendHeight = legendPadding * 2 + 20 + rangeMinutes.length * legendItemHeight;
       
       const legendX = 20;
-      const legendY = canvas.height - legendHeight - 20;
+      // Legend 定位基于裁剪后的地图高度
+      const legendY = mapHeight - legendHeight - 20;
 
       // 图例背景
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
@@ -143,7 +169,7 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       });
 
       // ========== Footer 区域：仿水印相机三栏布局 ==========
-      const footerY = canvas.height;
+      const footerY = mapHeight;
       
       // Footer 背景 - 浅灰色底，更有质感
       ctx.fillStyle = '#fafafa';

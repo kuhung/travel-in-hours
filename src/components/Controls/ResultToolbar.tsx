@@ -90,26 +90,49 @@ export default function ResultToolbar({
       // 竖屏: POI清单放左侧悬浮卡片
       const footerHeight = isLandscape ? 100 : 120;
       
+      // 计算裁剪区域（仅针对竖屏）
+      let mapWidth = canvas.width;
+      let mapHeight = canvas.height;
+      let sourceY = 0;
+
+      if (!isLandscape) {
+        // 竖屏模式：确保最终图片比例为 3:4 (0.75)
+        // TotalHeight = Width / 0.75
+        const targetTotalHeight = mapWidth / 0.75;
+        // MapHeight = TotalHeight - FooterHeight
+        const targetMapHeight = targetTotalHeight - footerHeight;
+
+        // 如果原始地图高度大于目标高度，则进行居中裁剪
+        if (canvas.height > targetMapHeight) {
+          mapHeight = targetMapHeight;
+          sourceY = (canvas.height - mapHeight) / 2;
+        }
+      }
+
       const finalCanvas = document.createElement('canvas');
       const ctx = finalCanvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
 
-      finalCanvas.width = canvas.width;
-      finalCanvas.height = canvas.height + footerHeight;
+      finalCanvas.width = mapWidth;
+      finalCanvas.height = mapHeight + footerHeight;
 
       // 绘制背景
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-      // 绘制地图
-      ctx.drawImage(canvas, 0, 0);
+      // 绘制地图 (支持裁剪)
+      ctx.drawImage(
+        canvas,
+        0, sourceY, mapWidth, mapHeight, // source x, y, w, h
+        0, 0, mapWidth, mapHeight        // dest x, y, w, h
+      );
 
       // ========== 绘制左侧 POI 清单面板 (优化设计) ==========
       if (hasPOI && totalPOIs > 0) {
         // 根据屏幕方向调整清单宽度
         const listPanelWidth = isLandscape 
-          ? Math.min(180, canvas.width * 0.18)  // 横屏时更窄
-          : Math.min(200, canvas.width * 0.22); // 竖屏时适中
+          ? Math.min(180, mapWidth * 0.18)  // 横屏时更窄
+          : Math.min(200, mapWidth * 0.22); // 竖屏时适中
         
         const listPadding = isLandscape ? 12 : 16;
         const headerHeight = 56;
@@ -121,7 +144,7 @@ export default function ResultToolbar({
         });
         
         // 清单最大高度限制
-        const maxListHeight = canvas.height - 40;
+        const maxListHeight = mapHeight - 40;
         const actualListHeight = Math.min(neededHeight, maxListHeight);
 
         // ===== 清单容器 - 现代磨砂玻璃效果 =====
@@ -257,8 +280,9 @@ export default function ResultToolbar({
       const legendHeight = legendPadding * 2 + 18 + rangeMinutes.length * legendItemHeight;
       
       // 图例位置 - 统一放右下角，与页面布局逻辑一致
-      const legendX = canvas.width - legendWidth - 16;
-      const legendY = canvas.height - legendHeight - 16;
+      const legendX = mapWidth - legendWidth - 16;
+      // Legend Y 定位基于裁剪后的地图高度
+      const legendY = mapHeight - legendHeight - 16;
 
       // 图例背景 - 磨砂玻璃
       ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
@@ -307,7 +331,7 @@ export default function ResultToolbar({
       });
 
       // ========== Footer 区域 - 响应式两栏/三栏布局 ==========
-      const footerY = canvas.height;
+      const footerY = mapHeight;
       const canvasWidth = finalCanvas.width;
       
       // Footer 背景渐变
