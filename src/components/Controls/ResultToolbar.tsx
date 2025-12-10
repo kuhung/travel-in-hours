@@ -51,16 +51,21 @@ export default function ResultToolbar({
         throw new Error('Map container not found');
       }
 
+      // 1. 截图地图
+      // 使用 ignoreElements 来隐藏不需要的控件 (Leaflet controls)
       const canvas = await html2canvas(mapElement, {
         useCORS: true,
         allowTaint: true,
         backgroundColor: null,
         logging: false,
         ignoreElements: (element) => {
+          // 隐藏 leaflet 的控件 (zoom, attribution 等)
+          // 也可以通过 class name 匹配
           return element.classList.contains('leaflet-control-container');
         }
       });
 
+      // 2. 生成二维码
       const shareUrl = generateShareUrl();
       const qrDataUrl = await QRCode.toDataURL(shareUrl, {
         margin: 2,           // 保留 quiet zone 以确保扫描器能识别边界
@@ -76,11 +81,13 @@ export default function ResultToolbar({
       await new Promise((resolve) => { qrImage.onload = resolve; });
 
       // 3. 创建合成画布 (增加底部 Footer)
-      const footerHeight = 160;
+      // 参考水印相机设计：三栏布局，左-中-右
+      const footerHeight = 140;
       const finalCanvas = document.createElement('canvas');
       const ctx = finalCanvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
 
+      // 设置高倍率以保证清晰度
       finalCanvas.width = canvas.width;
       finalCanvas.height = canvas.height + footerHeight;
 
@@ -91,7 +98,7 @@ export default function ResultToolbar({
       // 绘制地图
       ctx.drawImage(canvas, 0, 0);
 
-      // 绘制图例
+      // --- 绘制图例 (Legend) ---
       const legendWidth = 140;
       const legendPadding = 12;
       const legendItemHeight = 24;
@@ -144,53 +151,132 @@ export default function ResultToolbar({
         ctx.fillText(`${minutes} 分钟`, legendX + legendPadding + boxSize + 8, itemY + 2);
       });
 
-      // 绘制 Footer
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, canvas.height, finalCanvas.width, footerHeight);
+      // ========== Footer 区域：仿水印相机三栏布局 ==========
+      const footerY = canvas.height;
+      
+      // Footer 背景 - 浅灰色底，更有质感
+      ctx.fillStyle = '#fafafa';
+      ctx.fillRect(0, footerY, finalCanvas.width, footerHeight);
 
-      // 绘制分割线
-      ctx.strokeStyle = '#f3f4f6';
+      // 顶部分割线
+      ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, canvas.height);
-      ctx.lineTo(finalCanvas.width, canvas.height);
+      ctx.moveTo(0, footerY);
+      ctx.lineTo(finalCanvas.width, footerY);
       ctx.stroke();
 
-      // --- 绘制文字 ---
-      const padding = 40;
-      let textY = canvas.height + 36; // 起始 Y 坐标
-
-      // 1. 地点名称
-      ctx.fillStyle = '#111827'; // gray-900
-      ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
-      ctx.textBaseline = 'top';
-      ctx.fillText(landmark.name, padding, textY);
+      const padding = 32;
+      const canvasWidth = finalCanvas.width;
       
-      textY += 50;
+      // 计算三栏位置
+      const qrSize = 80;
+      const qrAreaWidth = qrSize + 24; // 二维码区域宽度（含扫码提示）
+      const leftColumnX = padding;
+      const rightColumnX = canvasWidth - padding - qrAreaWidth;
+      const centerX = canvasWidth / 2;
 
-      // 2. 出行方式与坐标
-      ctx.fillStyle = '#4b5563'; // gray-600
-      ctx.font = '500 24px system-ui, -apple-system, sans-serif';
-      
+      // ========== 左栏：地点信息 ==========
+      // 第一行：地点名称（主标题）
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      const leftLineY1 = footerY + 42;
+      ctx.fillText(landmark.name, leftColumnX, leftLineY1);
+
+      // 第二行：出行方式 + 等时圈范围
       const modeText = profile === 'driving-car' ? '驾车' : 
                        profile === 'cycling-regular' ? '骑行' : '步行';
+      const maxMinutes = rangeMinutes[rangeMinutes.length - 1];
+      const rangeText = maxMinutes >= 60 
+        ? `${Math.round(maxMinutes / 60 * 10) / 10}h 可达范围`
+        : `${maxMinutes}min 可达范围`;
       
-      const coordText = `${landmark.coordinates[1].toFixed(4)}, ${landmark.coordinates[0].toFixed(4)}`;
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '500 18px system-ui, -apple-system, sans-serif';
+      const leftLineY2 = footerY + 78;
+      ctx.fillText(`${modeText}  |  ${rangeText}`, leftColumnX, leftLineY2);
+
+      // 第三行：日期时间（仿水印相机）
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '400 14px system-ui, -apple-system, sans-serif';
+      const leftLineY3 = footerY + 108;
+      ctx.fillText(dateStr, leftColumnX, leftLineY3);
+
+      // ========== 中栏：品牌 Logo + Slogan ==========
+      ctx.textAlign = 'center';
       
-      ctx.fillText(`${modeText} · ${coordText}`, padding, textY);
+      // Logo 图标（地图符号）
+      const logoSize = 32;
+      const logoY = footerY + 36;
 
-      textY += 36;
+      // 绘制 Logo 背景圆角矩形
+      ctx.fillStyle = '#10b981';
+      ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 2;
+      ctx.beginPath();
+      ctx.roundRect(centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 8);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
 
-      // 3. 网址
-      ctx.fillStyle = '#059669'; // emerald-600
-      ctx.font = '20px system-ui, -apple-system, sans-serif';
-      ctx.fillText('https://keda.kuhung.me', padding, textY);
+      // Logo 内的地图图标（简化绘制）
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      // 绘制地图图标
+      const iconCenterX = centerX;
+      const iconCenterY = logoY;
+      const iconSize = 14;
+      
+      // 地图折叠效果
+      ctx.beginPath();
+      ctx.moveTo(iconCenterX - iconSize, iconCenterY + iconSize / 2);
+      ctx.lineTo(iconCenterX - iconSize / 3, iconCenterY - iconSize / 2);
+      ctx.lineTo(iconCenterX + iconSize / 3, iconCenterY + iconSize / 2);
+      ctx.lineTo(iconCenterX + iconSize, iconCenterY - iconSize / 2);
+      ctx.stroke();
 
-      // --- 绘制二维码 ---
-      const qrSize = 96;
-      const qrX = finalCanvas.width - padding - qrSize;
-      const qrY = canvas.height + (footerHeight - qrSize) / 2;
+      // 品牌名称
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+      ctx.fillText('可达出行', centerX, footerY + 72);
+
+      // Slogan
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '400 13px system-ui, -apple-system, sans-serif';
+      ctx.fillText('探索你的可达边界', centerX, footerY + 98);
+
+      // 网址
+      ctx.fillStyle = '#10b981';
+      ctx.font = '400 12px system-ui, -apple-system, sans-serif';
+      ctx.fillText('keda.kuhung.me', centerX, footerY + 118);
+
+      // ========== 右栏：二维码 + 扫码提示 ==========
+      ctx.textAlign = 'right';
+      
+      // 二维码位置
+      const qrX = canvasWidth - padding - qrSize;
+      const qrY = footerY + (footerHeight - qrSize - 20) / 2 + 4;
+
+      // 二维码白色背景（确保扫描）
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8);
+      
+      // 绘制二维码
       ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      // 扫码提示文字
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '400 11px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      const qrCenterX = qrX + qrSize / 2;
+      ctx.fillText('扫码查看', qrCenterX, qrY + qrSize + 16);
 
       finalCanvas.toBlob(async (blob) => {
         if (!blob) return;
