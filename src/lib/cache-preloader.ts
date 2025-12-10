@@ -3,13 +3,15 @@
 import { cityLandmarks } from '@/data/landmarks';
 import { TravelProfile } from '@/types';
 import { getCachedIsochrones, setCachedIsochrones } from './isochrone-cache';
+import { snapToGrid } from './grid';
 
 // 预加载配置
 const PRELOAD_PROFILES: TravelProfile[] = ['driving-car', 'cycling-regular', 'foot-walking'];
+// 保持与默认显示时间一致 [15, 30, 60] 以确保命中缓存
 const PRELOAD_RANGES: Record<TravelProfile, number[]> = {
-  'driving-car': [60], // ORS 限制驾车最多 1 小时
-  'cycling-regular': [60, 120],
-  'foot-walking': [60, 120],
+  'driving-car': [15, 30, 60], 
+  'cycling-regular': [15, 30, 60],
+  'foot-walking': [15, 30, 60],
 };
 
 interface PreloadTask {
@@ -27,10 +29,13 @@ function getPreloadTasks(): PreloadTask[] {
   for (const landmark of cityLandmarks) {
     for (const profile of PRELOAD_PROFILES) {
       const ranges = PRELOAD_RANGES[profile];
+      // 对齐到网格
+      const snappedCoordinates = snapToGrid(landmark.coordinates[0], landmark.coordinates[1]);
+      
       tasks.push({
         landmarkId: landmark.id,
         landmarkName: landmark.name,
-        coordinates: landmark.coordinates,
+        coordinates: snappedCoordinates,
         profile,
         rangeMinutes: ranges,
       });

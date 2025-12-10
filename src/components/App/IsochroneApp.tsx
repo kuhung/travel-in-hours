@@ -59,8 +59,11 @@ function IsochroneAppContent() {
       rangeMinutes
     );
 
-    // 如果没有缓存且超过限制
-    if (!cached && !checkLimit()) {
+    // 只有自定义选点才受次数限制
+    const isCustomLandmark = selectedLandmark.id.startsWith('custom-');
+
+    // 如果没有缓存且超过限制（仅限自定义选点）
+    if (isCustomLandmark && !cached && !checkLimit()) {
       alert('今日自定义选点次数已达上限（5次）。请明天再试！');
       return;
     }
@@ -71,8 +74,8 @@ function IsochroneAppContent() {
       rangeMinutes
     );
     
-    // 如果成功且未使用缓存，扣除次数
-    if (success && !cached) {
+    // 如果成功且未使用缓存，扣除次数（仅限自定义选点）
+    if (success && !cached && isCustomLandmark) {
       increment();
     }
     
@@ -235,15 +238,15 @@ function IsochroneAppContent() {
                 </div>
                 <button
                   onClick={handleGenerate}
-                  disabled={loading || (remaining <= 0 && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes))}
+                  disabled={loading || (remaining <= 0 && selectedLandmark?.id?.startsWith('custom-') && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes))}
                   className={`w-full py-3 px-4 rounded-xl font-bold text-white shadow-lg 
                             transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]
-                            ${loading || (remaining <= 0 && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes))
+                            ${loading || (remaining <= 0 && selectedLandmark?.id?.startsWith('custom-') && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes))
                               ? 'bg-gray-400 cursor-not-allowed' 
                               : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
                             }`}
                 >
-                  {loading ? '生成中...' : remaining <= 0 && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes) ? '次数耗尽' : '开始分析'}
+                  {loading ? '生成中...' : (remaining <= 0 && selectedLandmark?.id?.startsWith('custom-') && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes)) ? '次数耗尽' : '开始分析'}
                 </button>
               </section>
 

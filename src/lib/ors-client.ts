@@ -1,6 +1,7 @@
 import { TravelProfile, IsochroneResponse } from '@/types';
 import { minutesToSeconds } from '@/data/isochrone-config';
 import { unstable_cache } from 'next/cache';
+import { snapToGrid } from './grid';
 
 const ORS_BASE_URL = 'https://api.openrouteservice.org/v2';
 
@@ -105,9 +106,13 @@ async function fetchIsochronesFromAPI(
  * 生成缓存 Key
  */
 function generateCacheKey(params: IsochroneRequestParams): string {
-  const { coordinates, profile, rangeMinutes } = params;
-  // 确保数字精度一致，避免微小差异导致缓存失效
-  const coordKey = `${coordinates[0].toFixed(4)}_${coordinates[1].toFixed(4)}`;
+  const { coordinates: rawCoordinates, profile, rangeMinutes } = params;
+  
+  // 确保使用网格坐标生成 Key
+  const coordinates = snapToGrid(rawCoordinates[0], rawCoordinates[1]);
+
+  // 使用与客户端一致的精度
+  const coordKey = `${coordinates[0].toFixed(6)}_${coordinates[1].toFixed(6)}`;
   const rangeKey = [...rangeMinutes].sort((a, b) => a - b).join('_');
   // v3: 增加了 value 还原逻辑，确保缓存的数据包含原始时间值
   return `ors-iso-v3-${coordKey}-${profile}-${rangeKey}`;

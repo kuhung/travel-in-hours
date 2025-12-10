@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { IsochroneFeature, TravelProfile } from '@/types';
 import { getCachedIsochrones, setCachedIsochrones } from '@/lib/isochrone-cache';
+import { snapToGrid } from '@/lib/grid';
 
 interface UseIsochronesResult {
   isochrones: IsochroneFeature[];
@@ -24,11 +25,14 @@ export function useIsochrones(): UseIsochronesResult {
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
 
-  const fetchIsochrones = useCallback(async (
-    coordinates: [number, number],
+    const fetchIsochrones = useCallback(async (
+    rawCoordinates: [number, number],
     profile: TravelProfile,
     rangeMinutes: number[]
   ) => {
+    // 对齐到网格系统
+    const coordinates = snapToGrid(rawCoordinates[0], rawCoordinates[1]);
+
     setLoading(true);
     setError(null);
     setFromCache(false);
