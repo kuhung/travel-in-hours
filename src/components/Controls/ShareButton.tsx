@@ -241,7 +241,7 @@ export default function ShareButton({ landmark, profile, rangeMinutes, hasData =
       // Slogan
       ctx.fillStyle = '#9ca3af';
       ctx.font = '400 13px system-ui, -apple-system, sans-serif';
-      ctx.fillText('探索你的可达边界', centerX, footerY + 98);
+      ctx.fillText('探索你的小时边界', centerX, footerY + 98);
 
       // 网址
       ctx.fillStyle = '#10b981';

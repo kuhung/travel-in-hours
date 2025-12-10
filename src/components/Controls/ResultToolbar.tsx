@@ -83,7 +83,7 @@ export default function ResultToolbar({
       qrImage.src = qrDataUrl;
       await new Promise((resolve) => { qrImage.onload = resolve; });
 
-      // 3. 创建合成画布 (增加底部 Footer + 可选左侧清单)
+      // 3. 创建合成画布 (增加底部 Footer)
       // 参考水印相机设计：印刷品风格
       const footerHeight = 140;
       const hasPOI = poiByLayer.length > 0;
@@ -97,18 +97,30 @@ export default function ResultToolbar({
       if (!ctx) throw new Error('Canvas context not available');
 
       // 设置高倍率以保证清晰度
-      finalCanvas.width = canvas.width + listPanelWidth;
+      // 修改：保持地图原始宽度，不再额外增加宽度
+      finalCanvas.width = canvas.width;
       finalCanvas.height = canvas.height + footerHeight;
 
       // 绘制背景 (白色)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-      // ========== 绘制左侧 POI 清单面板 ==========
+      // 绘制地图（铺满画布，位于底层）
+      ctx.drawImage(canvas, 0, 0);
+
+      // ========== 绘制左侧 POI 清单面板 (覆盖模式) ==========
       if (hasPOI && listPanelWidth > 0) {
-        // 清单背景
-        ctx.fillStyle = '#fafafa';
+        // 清单背景 - 带轻微透明度的白色，模拟悬浮效果
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+        
+        // 添加右侧阴影，增强层次感
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+        ctx.shadowBlur = 16;
+        ctx.shadowOffsetX = 4;
+        
         ctx.fillRect(0, 0, listPanelWidth, canvas.height);
+        
+        ctx.shadowColor = 'transparent'; // 重置阴影
         
         // 右侧分割线
         ctx.strokeStyle = '#e5e7eb';
@@ -196,17 +208,15 @@ export default function ResultToolbar({
         });
       }
 
-      // 绘制地图（偏移到清单右侧）
-      ctx.drawImage(canvas, listPanelWidth, 0);
-
       // --- 绘制图例 (Legend) ---
       const legendWidth = 140;
       const legendPadding = 12;
       const legendItemHeight = 24;
       const legendHeight = legendPadding * 2 + 20 + rangeMinutes.length * legendItemHeight;
       
-      // 图例位置需要考虑左侧清单的偏移
-      const legendX = listPanelWidth + 20;
+      // 图例位置：如果在有清单的情况下，稍微避让一下清单
+      // 如果清单宽度占比较小，图例放在清单右侧；否则放在右下角
+      const legendX = (hasPOI && listPanelWidth > 0) ? listPanelWidth + 20 : 20;
       const legendY = canvas.height - legendHeight - 20;
 
       // 图例背景
@@ -271,8 +281,8 @@ export default function ResultToolbar({
       const padding = 32;
       const canvasWidth = finalCanvas.width;
       
-      // Footer 内容区域从清单右侧开始
-      const footerContentStart = listPanelWidth;
+      // Footer 内容区域占满全宽 (不再受左侧清单挤压)
+      const footerContentStart = 0;
       
       // 计算三栏位置（相对于 footer 内容区域）
       const qrSize = 80;
@@ -356,7 +366,7 @@ export default function ResultToolbar({
       // Slogan
       ctx.fillStyle = '#9ca3af';
       ctx.font = '400 13px system-ui, -apple-system, sans-serif';
-      ctx.fillText('探索你的可达边界', centerX, footerY + 98);
+      ctx.fillText('探索你的小时边界', centerX, footerY + 98);
 
       // 网址
       ctx.fillStyle = '#10b981';

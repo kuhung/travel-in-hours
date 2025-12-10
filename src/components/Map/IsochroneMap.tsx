@@ -156,31 +156,47 @@ export default function IsochroneMap({
   // 创建编号气泡图标
   const createNumberIcon = useCallback((index: number, layerMinutes: number, isHighlighted: boolean) => {
     const colors = layerColors[layerMinutes] || { color: '#3b82f6', fillColor: '#93c5fd' };
-    const size = isHighlighted ? 36 : 28;
+    const size = isHighlighted ? 42 : 32; // 稍微调大一点以容纳水滴形状
     const fontSize = isHighlighted ? 14 : 12;
+    
+    // 水滴形状的 SVG 路径
+    const pinPath = "M16 0C7.163 0 0 7.163 0 16c0 8.837 16 32 16 32s16-23.163 16-32C32 7.163 24.837 0 16 0z";
     
     return L.divIcon({
       className: 'poi-number-marker',
       html: `
         <div style="
+          position: relative;
           width: ${size}px;
-          height: ${size}px;
-          background: white;
-          border: 3px solid ${colors.color};
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: ${fontSize}px;
-          font-weight: 700;
-          color: ${colors.color};
-          box-shadow: 0 2px 8px rgba(0,0,0,0.2)${isHighlighted ? ', 0 0 0 4px ' + colors.fillColor : ''};
-          transition: all 0.2s ease;
-          ${isHighlighted ? 'transform: scale(1.1);' : ''}
-        ">${index}</div>
+          height: ${size * 1.5}px;
+          filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+          transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          ${isHighlighted ? 'transform: scale(1.1) translateY(-4px); z-index: 1000;' : 'transform: translateY(0);'}
+        ">
+          <svg viewBox="0 0 32 48" width="100%" height="100%" style="overflow: visible;">
+            <path d="${pinPath}" fill="${colors.color}" stroke="white" stroke-width="2" />
+            <circle cx="16" cy="16" r="10" fill="rgba(255,255,255,0.15)" />
+          </svg>
+          <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: ${size}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: ${fontSize}px;
+            font-weight: 700;
+            color: white;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+          ">${index}</div>
+        </div>
       `,
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
+      iconSize: [size, size * 1.5],
+      iconAnchor: [size / 2, size * 1.5], // 锚点在底部尖端
+      popupAnchor: [0, -size * 1.5], // 弹窗在顶部上方
     });
   }, []);
 
