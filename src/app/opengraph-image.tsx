@@ -74,7 +74,7 @@ export default async function Image() {
 
         {/* 底部装饰 */}
         <div style={{ position: 'absolute', bottom: 40, fontSize: 24, color: '#64748b' }}>
-          keda.kuhung.me
+          https://keda.kuhung.me
         </div>
       </div>
     ),

@@ -255,7 +255,7 @@ export default function ResultToolbar({
       // 网址
       ctx.fillStyle = '#10b981';
       ctx.font = '400 12px system-ui, -apple-system, sans-serif';
-      ctx.fillText('keda.kuhung.me', centerX, footerY + 118);
+      ctx.fillText('https://keda.kuhung.me', centerX, footerY + 118);
 
       // ========== 右栏：二维码 + 扫码提示 ==========
       ctx.textAlign = 'right';
