@@ -9,6 +9,17 @@ export interface CityLandmark {
   icon?: string;
 }
 
+// 兴趣点 (POI)
+export interface InterestPoint {
+  id: string;
+  name: string;
+  city: string;
+  coordinates: [number, number]; // [lng, lat]
+  category: 'tourism' | 'food' | 'activity' | 'shopping' | 'other';
+  description?: string;
+  rating?: number; // 推荐指数 1-5
+}
+
 // 等时圈范围配置
 export interface IsochroneRange {
   minutes: number;
@@ -25,8 +36,8 @@ export interface IsochroneFeature {
     center: [number, number];
   };
   geometry: {
-    type: 'Polygon';
-    coordinates: number[][][];
+    type: 'Polygon' | 'MultiPolygon';
+    coordinates: number[][][] | number[][][][];
   };
 }
 
@@ -68,4 +79,3 @@ export interface ShareParams {
   profile: TravelProfile;
   range: number[];
 }
-

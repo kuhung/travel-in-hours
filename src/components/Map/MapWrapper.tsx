@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { CityLandmark, IsochroneFeature, TravelProfile } from '@/types';
+import { POIWithLayer } from '@/lib/poi-utils';
 
 // 动态导入地图组件，完全禁用 SSR
 const IsochroneMap = dynamic(
@@ -21,10 +22,12 @@ const IsochroneMap = dynamic(
 
 interface MapWrapperProps {
   landmark: CityLandmark | null;
+  poiWithLayers?: POIWithLayer[];
   isochrones: IsochroneFeature[];
   profile: TravelProfile;
   rangeMinutes: number[];
   onMapClick?: (lat: number, lng: number) => void;
+  highlightedPOI?: number | null;
 }
 
 export default function MapWrapper(props: MapWrapperProps) {

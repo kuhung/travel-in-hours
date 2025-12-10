@@ -5,11 +5,13 @@ import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { CityLandmark, TravelProfile } from '@/types';
 import { getColorForRange } from '@/data/isochrone-config';
+import { POIByLayer, formatLayerTime } from '@/lib/poi-utils';
 
 interface ResultToolbarProps {
   landmark: CityLandmark | null;
   profile: TravelProfile;
   rangeMinutes: number[];
+  poiByLayer?: POIByLayer[];
   onEdit: () => void;
 }
 
@@ -17,6 +19,7 @@ export default function ResultToolbar({
   landmark,
   profile,
   rangeMinutes,
+  poiByLayer = [],
   onEdit,
 }: ResultToolbarProps) {
   const [showShareOptions, setShowShareOptions] = useState(false);
@@ -80,23 +83,121 @@ export default function ResultToolbar({
       qrImage.src = qrDataUrl;
       await new Promise((resolve) => { qrImage.onload = resolve; });
 
-      // 3. 创建合成画布 (增加底部 Footer)
-      // 参考水印相机设计：三栏布局，左-中-右
+      // 3. 创建合成画布 (增加底部 Footer + 可选左侧清单)
+      // 参考水印相机设计：印刷品风格
       const footerHeight = 140;
+      const hasPOI = poiByLayer.length > 0;
+      const totalPOIs = poiByLayer.reduce((sum, layer) => sum + layer.points.length, 0);
+      
+      // 计算左侧清单宽度（如果有 POI）
+      const listPanelWidth = hasPOI ? Math.min(220, canvas.width * 0.25) : 0;
+      
       const finalCanvas = document.createElement('canvas');
       const ctx = finalCanvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
 
       // 设置高倍率以保证清晰度
-      finalCanvas.width = canvas.width;
+      finalCanvas.width = canvas.width + listPanelWidth;
       finalCanvas.height = canvas.height + footerHeight;
 
       // 绘制背景 (白色)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-      // 绘制地图
-      ctx.drawImage(canvas, 0, 0);
+      // ========== 绘制左侧 POI 清单面板 ==========
+      if (hasPOI && listPanelWidth > 0) {
+        // 清单背景
+        ctx.fillStyle = '#fafafa';
+        ctx.fillRect(0, 0, listPanelWidth, canvas.height);
+        
+        // 右侧分割线
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(listPanelWidth, 0);
+        ctx.lineTo(listPanelWidth, canvas.height);
+        ctx.stroke();
+
+        const listPadding = 16;
+        let currentY = listPadding;
+
+        // 清单标题
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('可达地点', listPadding, currentY);
+        currentY += 20;
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '400 11px system-ui, -apple-system, sans-serif';
+        ctx.fillText(`共 ${totalPOIs} 个地点`, listPadding, currentY);
+        currentY += 24;
+
+        // 绘制各圈层
+        poiByLayer.forEach((layer) => {
+          // 圈层标题
+          ctx.fillStyle = layer.color;
+          ctx.font = '600 12px system-ui, -apple-system, sans-serif';
+          
+          // 圈层圆点
+          ctx.beginPath();
+          ctx.arc(listPadding + 5, currentY + 6, 4, 0, Math.PI * 2);
+          ctx.fillStyle = layer.fillColor;
+          ctx.fill();
+          ctx.strokeStyle = layer.color;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.fillStyle = layer.color;
+          ctx.fillText(formatLayerTime(layer.layerMinutes), listPadding + 14, currentY);
+          currentY += 18;
+
+          // POI 列表
+          layer.points.forEach((poi) => {
+            if (currentY > canvas.height - 30) return; // 超出范围则跳过
+
+            // 编号圆圈
+            const circleX = listPadding + 8;
+            const circleY = currentY + 7;
+            const circleRadius = 8;
+
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+            ctx.fillStyle = layer.color;
+            ctx.fill();
+
+            // 编号文字
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(poi.index.toString(), circleX, circleY);
+
+            // POI 名称
+            ctx.fillStyle = '#374151';
+            ctx.font = '500 11px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            // 截断过长的名称
+            let poiName = poi.name;
+            const maxWidth = listPanelWidth - listPadding - 28;
+            while (ctx.measureText(poiName).width > maxWidth && poiName.length > 0) {
+              poiName = poiName.slice(0, -1);
+            }
+            if (poiName !== poi.name) poiName += '...';
+            
+            ctx.fillText(poiName, listPadding + 20, currentY + 2);
+            currentY += 20;
+          });
+
+          currentY += 8; // 圈层间距
+        });
+      }
+
+      // 绘制地图（偏移到清单右侧）
+      ctx.drawImage(canvas, listPanelWidth, 0);
 
       // --- 绘制图例 (Legend) ---
       const legendWidth = 140;
@@ -104,7 +205,8 @@ export default function ResultToolbar({
       const legendItemHeight = 24;
       const legendHeight = legendPadding * 2 + 20 + rangeMinutes.length * legendItemHeight;
       
-      const legendX = 20;
+      // 图例位置需要考虑左侧清单的偏移
+      const legendX = listPanelWidth + 20;
       const legendY = canvas.height - legendHeight - 20;
 
       // 图例背景
@@ -169,12 +271,16 @@ export default function ResultToolbar({
       const padding = 32;
       const canvasWidth = finalCanvas.width;
       
-      // 计算三栏位置
+      // Footer 内容区域从清单右侧开始
+      const footerContentStart = listPanelWidth;
+      
+      // 计算三栏位置（相对于 footer 内容区域）
       const qrSize = 80;
       const qrAreaWidth = qrSize + 24; // 二维码区域宽度（含扫码提示）
-      const leftColumnX = padding;
+      const footerContentWidth = canvasWidth - footerContentStart;
+      const leftColumnX = footerContentStart + padding;
       const rightColumnX = canvasWidth - padding - qrAreaWidth;
-      const centerX = canvasWidth / 2;
+      const centerX = footerContentStart + footerContentWidth / 2;
 
       // ========== 左栏：地点信息 ==========
       // 第一行：地点名称（主标题）

@@ -1,82 +1,56 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
+import { 
+  MapContainer, 
+  TileLayer, 
+  GeoJSON, 
+  Marker, 
+  Popup, 
+  ZoomControl, 
+  useMap 
+} from 'react-leaflet';
+import L from 'leaflet';
 import { CityLandmark, IsochroneFeature, TravelProfile } from '@/types';
 import { getColorForRange } from '@/data/isochrone-config';
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/lib/coord-transform';
+import { POIWithLayer } from '@/lib/poi-utils';
+
+// 修复 Leaflet 默认图标问题
+// 注意：这个副作用只需要执行一次，但放在这里也无妨，因为它是幂等的（大部分）
+// 或者我们可以放在 useEffect 中
+const fixLeafletIcons = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+};
 
 interface IsochroneMapProps {
   landmark: CityLandmark | null;
+  poiWithLayers?: POIWithLayer[];
   isochrones: IsochroneFeature[];
   profile: TravelProfile;
   rangeMinutes: number[];
   onMapClick?: (lat: number, lng: number) => void;
+  highlightedPOI?: number | null;
 }
 
 export default function IsochroneMap({
   landmark,
+  poiWithLayers = [],
   isochrones,
   profile,
   rangeMinutes,
   onMapClick,
+  highlightedPOI,
 }: IsochroneMapProps) {
-  const [isClient, setIsClient] = useState(false);
-  const [MapComponents, setMapComponents] = useState<{
-    MapContainer: React.ComponentType<{ 
-      center: [number, number]; 
-      zoom: number; 
-      className?: string;
-      scrollWheelZoom?: boolean;
-      zoomControl?: boolean;
-      preferCanvas?: boolean;
-      children?: React.ReactNode;
-    }>;
-    TileLayer: React.ComponentType<{ 
-      attribution?: string; 
-      url: string; 
-      className?: string;
-      opacity?: number;
-    }>;
-    GeoJSON: React.ComponentType<{ 
-      key?: string;
-      data: GeoJSON.Feature;
-      style?: (feature: GeoJSON.Feature | undefined) => Record<string, unknown>;
-      onEachFeature?: (feature: GeoJSON.Feature, layer: L.Layer) => void;
-    }>;
-    Marker: React.ComponentType<{ position: [number, number]; children?: React.ReactNode }>;
-    Popup: React.ComponentType<{ children?: React.ReactNode }>;
-    ZoomControl: React.ComponentType<{ position: 'topleft' | 'topright' | 'bottomleft' | 'bottomright' }>;
-    useMap: () => L.Map;
-  } | null>(null);
   
-  // 确保只在客户端运行，动态加载 react-leaflet
   useEffect(() => {
-    setIsClient(true);
-    
-    // 动态导入 react-leaflet 和 leaflet
-    Promise.all([
-      import('react-leaflet'),
-      import('leaflet'),
-    ]).then(([reactLeaflet, L]) => {
-      // 修复 Leaflet 默认图标问题
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.default.Icon.Default.prototype as any)._getIconUrl;
-      L.default.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-      
-      setMapComponents({
-        MapContainer: reactLeaflet.MapContainer,
-        TileLayer: reactLeaflet.TileLayer,
-        GeoJSON: reactLeaflet.GeoJSON,
-        Marker: reactLeaflet.Marker,
-        Popup: reactLeaflet.Popup,
-        ZoomControl: reactLeaflet.ZoomControl,
-        useMap: reactLeaflet.useMap,
-      });
-    });
+    fixLeafletIcons();
   }, []);
   
   // 计算地图中心和缩放级别 (转换为 GCJ-02)
@@ -172,18 +146,43 @@ export default function IsochroneMap({
     return [lat, lng];
   }, [landmark]);
 
-  if (!isClient || !MapComponents) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-400 border-t-transparent"></div>
-          <p className="text-emerald-400 text-lg font-medium">地图加载中...</p>
-        </div>
-      </div>
-    );
-  }
+  // 圈层颜色配置
+  const layerColors: Record<number, { color: string; fillColor: string }> = {
+    15: { color: '#15803d', fillColor: '#86efac' },
+    30: { color: '#a16207', fillColor: '#fde68a' },
+    60: { color: '#dc2626', fillColor: '#fca5a5' },
+  };
 
-  const { MapContainer, TileLayer, GeoJSON, Marker, Popup, ZoomControl } = MapComponents;
+  // 创建编号气泡图标
+  const createNumberIcon = useCallback((index: number, layerMinutes: number, isHighlighted: boolean) => {
+    const colors = layerColors[layerMinutes] || { color: '#3b82f6', fillColor: '#93c5fd' };
+    const size = isHighlighted ? 36 : 28;
+    const fontSize = isHighlighted ? 14 : 12;
+    
+    return L.divIcon({
+      className: 'poi-number-marker',
+      html: `
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          background: white;
+          border: 3px solid ${colors.color};
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: ${fontSize}px;
+          font-weight: 700;
+          color: ${colors.color};
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2)${isHighlighted ? ', 0 0 0 4px ' + colors.fillColor : ''};
+          transition: all 0.2s ease;
+          ${isHighlighted ? 'transform: scale(1.1);' : ''}
+        ">${index}</div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  }, []);
 
   return (
     <MapContainer
@@ -205,7 +204,7 @@ export default function IsochroneMap({
         center={center} 
         zoom={zoom} 
         onMapClick={onMapClick} 
-        useMapHook={MapComponents.useMap}
+        useMapHook={useMap}
         isochrones={transformedIsochrones}
         landmark={landmark}
       />
@@ -230,10 +229,47 @@ export default function IsochroneMap({
               {landmark.description && (
                 <div className="text-xs text-gray-500 mt-1">{landmark.description}</div>
               )}
+              <div className="mt-2 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+                起点
+              </div>
             </div>
           </Popup>
         </Marker>
       )}
+
+      {/* 兴趣点标记 - 使用编号气泡 */}
+      {poiWithLayers.map(poi => (
+        <Marker
+          key={poi.id}
+          position={poi.position}
+          icon={createNumberIcon(poi.index, poi.layerMinutes, highlightedPOI === poi.index)}
+        >
+          <Popup>
+            <div className="p-2 min-w-[160px]">
+              <div className="flex items-center gap-2 mb-2">
+                <span 
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                  style={{ backgroundColor: layerColors[poi.layerMinutes]?.color || '#3b82f6' }}
+                >
+                  {poi.index}
+                </span>
+                <span className="font-bold text-base text-gray-800">{poi.name}</span>
+              </div>
+              {poi.description && (
+                <div className="text-xs text-gray-600 mb-2">{poi.description}</div>
+              )}
+              <div className="text-xs px-2 py-1 rounded-full inline-block"
+                style={{ 
+                  backgroundColor: layerColors[poi.layerMinutes]?.fillColor || '#93c5fd',
+                  color: layerColors[poi.layerMinutes]?.color || '#3b82f6'
+                }}
+              >
+                {poi.layerMinutes >= 60 ? `${poi.layerMinutes / 60}小时` : `${poi.layerMinutes}分钟`}内可达
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
     </MapContainer>
   );
 }

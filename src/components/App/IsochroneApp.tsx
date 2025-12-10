@@ -1,20 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { CityLandmark, TravelProfile } from '@/types';
 import { defaultTimeRanges } from '@/data/isochrone-config';
 import { getLandmarkById } from '@/data/landmarks';
+import { getInterestPointsByCity } from '@/data/interest-points';
 import { MapWrapper, MapLegend } from '@/components/Map';
 import { 
   CitySelector, 
   TravelModeSelector, 
   ShareButton,
-  ResultToolbar 
+  ResultToolbar,
+  POIListPanel 
 } from '@/components/Controls';
 import { ErrorMessage, WelcomeGuide } from '@/components/UI';
 import { useIsochrones, useShareParams, useSelectionLimit } from '@/hooks';
 import { startBackgroundPreload } from '@/lib/cache-preloader';
 import { getCachedIsochrones } from '@/lib/isochrone-cache';
+import { groupPOIsByLayer, getAllPOIsWithIndex, POIByLayer } from '@/lib/poi-utils';
 
 function IsochroneAppContent() {
   // 从 URL 参数读取初始值
@@ -26,6 +29,9 @@ function IsochroneAppContent() {
   const [rangeMinutes] = useState<number[]>(defaultTimeRanges);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   
+  // 高亮的 POI 索引
+  const [highlightedPOI, setHighlightedPOI] = useState<number | null>(null);
+
   // 次数限制
   const { remaining, increment, checkLimit } = useSelectionLimit();
   
@@ -38,6 +44,23 @@ function IsochroneAppContent() {
     clearIsochrones,
     clearError 
   } = useIsochrones();
+
+  // 获取当前城市的兴趣点
+  const interestPoints = useMemo(() => {
+    if (!selectedLandmark) return [];
+    return getInterestPointsByCity(selectedLandmark.city);
+  }, [selectedLandmark]);
+
+  // 按圈层分组的 POI（只在有等时圈数据时计算）
+  const poiByLayer: POIByLayer[] = useMemo(() => {
+    if (isochrones.length === 0 || interestPoints.length === 0) return [];
+    return groupPOIsByLayer(interestPoints, isochrones, rangeMinutes);
+  }, [interestPoints, isochrones, rangeMinutes]);
+
+  // 扁平化的带编号 POI 列表
+  const poiWithLayers = useMemo(() => {
+    return getAllPOIsWithIndex(poiByLayer);
+  }, [poiByLayer]);
 
   // 派生状态：是否处于查看结果模式（有数据且面板折叠）
   // 只有在面板折叠且有数据时，才认为是“纯净结果浏览模式”
@@ -156,16 +179,26 @@ function IsochroneAppContent() {
       <div id="app-map-container" className="absolute inset-0 z-0">
         <MapWrapper
           landmark={selectedLandmark}
+          poiWithLayers={poiWithLayers}
           isochrones={isochrones}
           profile={profile}
           rangeMinutes={rangeMinutes}
           onMapClick={handleMapClick}
+          highlightedPOI={highlightedPOI}
         />
       </div>
 
       {/* 图例 - 仅在纯净结果浏览模式下显示 */}
       {isResultView && (
         <MapLegend rangeMinutes={rangeMinutes} />
+      )}
+
+      {/* POI 清单面板 - 仅在有 POI 数据时显示 */}
+      {isResultView && poiByLayer.length > 0 && (
+        <POIListPanel
+          poiByLayer={poiByLayer}
+          onPOIHover={setHighlightedPOI}
+        />
       )}
 
       {/* 顶部标题 - 极简风格 */}
@@ -281,6 +314,7 @@ function IsochroneAppContent() {
           landmark={selectedLandmark}
           profile={profile}
           rangeMinutes={rangeMinutes}
+          poiByLayer={poiByLayer}
           onEdit={() => setIsPanelOpen(true)}
         />
       )}
