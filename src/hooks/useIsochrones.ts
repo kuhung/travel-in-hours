@@ -13,7 +13,7 @@ interface UseIsochronesResult {
     coordinates: [number, number],
     profile: TravelProfile,
     rangeMinutes: number[]
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   clearIsochrones: () => void;
   clearError: () => void;
 }
@@ -39,7 +39,7 @@ export function useIsochrones(): UseIsochronesResult {
       setIsochrones(cached);
       setFromCache(true);
       setLoading(false);
-      return;
+      return true;
     }
 
     try {
@@ -69,10 +69,12 @@ export function useIsochrones(): UseIsochronesResult {
       if (features.length > 0) {
         setCachedIsochrones(coordinates, profile, rangeMinutes, features);
       }
+      return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : '获取数据失败';
       setError(message);
       setIsochrones([]);
+      return false;
     } finally {
       setLoading(false);
     }

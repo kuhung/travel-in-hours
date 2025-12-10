@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://keda.kuhung.me'),
-  title: "出行可达地图 | 你的3小时逃离计划生成器",
+  title: "出行可达地图 | 你的1小时逃离计划生成器",
   description: "输入出发地，一键生成1-3小时内的可达范围。无论是周末自驾逃离城市，还是城市漫步探索未知，发现你的生活半径极限。",
   keywords: ["可达地图", "等时圈", "周末去哪儿", "逃离北上广", "自驾游规划", "生活圈可视化", "OpenRouteService", "交通分析"],
   authors: [{ name: "kuhung", url: "https://kuhung.me/about" }],

@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
-export const alt = '出行可达地图 - 探索你的3小时生活圈';
+export const alt = '出行可达地图 - 探索你的1小时生活圈';
 export const size = {
   width: 1200,
   height: 630,

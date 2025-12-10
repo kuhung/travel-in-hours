@@ -12,8 +12,9 @@ import {
   ResultToolbar 
 } from '@/components/Controls';
 import { ErrorMessage, WelcomeGuide } from '@/components/UI';
-import { useIsochrones, useShareParams } from '@/hooks';
+import { useIsochrones, useShareParams, useSelectionLimit } from '@/hooks';
 import { startBackgroundPreload } from '@/lib/cache-preloader';
+import { getCachedIsochrones } from '@/lib/isochrone-cache';
 
 function IsochroneAppContent() {
   // 从 URL 参数读取初始值
@@ -24,6 +25,9 @@ function IsochroneAppContent() {
   const [profile, setProfile] = useState<TravelProfile>('driving-car');
   const [rangeMinutes] = useState<number[]>(defaultTimeRanges);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  
+  // 次数限制
+  const { remaining, increment, checkLimit } = useSelectionLimit();
   
   // 等时圈数据
   const { 
@@ -48,15 +52,51 @@ function IsochroneAppContent() {
   const handleGenerate = useCallback(async () => {
     if (!selectedLandmark) return;
     
-    await fetchIsochrones(
+    // 检查缓存
+    const cached = getCachedIsochrones(
+      selectedLandmark.coordinates,
+      profile,
+      rangeMinutes
+    );
+
+    // 如果没有缓存且超过限制
+    if (!cached && !checkLimit()) {
+      alert('今日自定义选点次数已达上限（5次）。请明天再试！');
+      return;
+    }
+    
+    const success = await fetchIsochrones(
       selectedLandmark.coordinates,
       profile,
       rangeMinutes
     );
     
+    // 如果成功且未使用缓存，扣除次数
+    if (success && !cached) {
+      increment();
+    }
+    
     // 生成成功后，折叠面板
-    setIsPanelOpen(false); 
-  }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones]);
+    if (success) {
+      setIsPanelOpen(false); 
+    }
+  }, [selectedLandmark, profile, rangeMinutes, fetchIsochrones, checkLimit, increment]);
+
+  // 地图点击处理
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    const customLandmark: CityLandmark = {
+      id: `custom-${Date.now()}`,
+      name: '自定义选点',
+      city: '自定义位置',
+      province: '',
+      coordinates: [lng, lat],
+      description: '点击地图选择的位置'
+    };
+    setSelectedLandmark(customLandmark);
+    if (!isPanelOpen) {
+      setIsPanelOpen(true);
+    }
+  }, [isPanelOpen]);
 
   // 首次访问自动演示：为了让新用户直接看到效果，如果是首次访问（没有记录），则自动触发一次查询
   useEffect(() => {
@@ -116,6 +156,7 @@ function IsochroneAppContent() {
           isochrones={isochrones}
           profile={profile}
           rangeMinutes={rangeMinutes}
+          onMapClick={handleMapClick}
         />
       </div>
 
@@ -189,17 +230,20 @@ function IsochroneAppContent() {
 
                {/* 生成按钮 */}
               <section>
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-xs text-gray-500">今日剩余自定义次数: <span className={remaining > 0 ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>{remaining}</span></h2>
+                </div>
                 <button
                   onClick={handleGenerate}
-                  disabled={loading}
+                  disabled={loading || (remaining <= 0 && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes))}
                   className={`w-full py-3 px-4 rounded-xl font-bold text-white shadow-lg 
                             transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]
-                            ${loading 
+                            ${loading || (remaining <= 0 && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes))
                               ? 'bg-gray-400 cursor-not-allowed' 
                               : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
                             }`}
                 >
-                  {loading ? '生成中...' : '开始分析'}
+                  {loading ? '生成中...' : remaining <= 0 && !getCachedIsochrones(selectedLandmark?.coordinates || [0,0], profile, rangeMinutes) ? '次数耗尽' : '开始分析'}
                 </button>
               </section>
 
