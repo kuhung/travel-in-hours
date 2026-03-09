@@ -1,6 +1,31 @@
 {
   "name": "travel-in-3hours",
   "version": "0.1.0",
+  "description": "基于 OpenRouteService 等时圈 API 的出行可达地图，可视化从任意出发点在指定时间内可达的地理范围。Isochrone travel reachability map for Chinese cities.",
+  "homepage": "https://keda.kuhung.me",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kuhung/travel-in-3hours.git"
+  },
+  "keywords": [
+    "isochrone",
+    "travel-map",
+    "reachability",
+    "openrouteservice",
+    "leaflet",
+    "nextjs",
+    "可达地图",
+    "等时圈",
+    "出行规划",
+    "周末去哪儿",
+    "生活圈可视化"
+  ],
+  "author": {
+    "name": "kuhung",
+    "email": "hi@kuhung.me",
+    "url": "https://kuhung.me/about"
+  },
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev",
