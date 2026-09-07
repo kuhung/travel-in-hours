@@ -1,7 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["hkg1"],
+  "regions": [
+    "hkg1"
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "hourtrip.kuhung.me"
+        }
+      ],
+      "destination": "https://keda.kuhung.me/:path*",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -15,4 +30,3 @@
   ],
   "rewrites": []
 }
-
