@@ -37,6 +37,34 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "出行可达地图",
+  "url": "https://keda.kuhung.me/",
+  "description": "输入出发地，一键算出 15 分钟到 3 小时车程能到的范围，用来找周末去哪、看清自己的生活半径。",
+  "applicationCategory": "TravelApplication",
+  "operatingSystem": "Web Browser",
+  "browserRequirements": "Requires JavaScript",
+  "inLanguage": "zh-CN",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "CNY"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "kuhung",
+    "url": "https://kuhung.me"
+  },
+  "featureList": [
+    "按时间画可达范围",
+    "15 分钟到 3 小时多档位",
+    "周末自驾逃离城市",
+    "城市漫步探索"
+  ]
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,6 +80,10 @@ export default function RootLayout({
           gtag('js', new Date());
           gtag('config', 'G-S9K4XS0DZ6');
         ` }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body
         className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
