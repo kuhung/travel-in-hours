@@ -71,7 +71,7 @@ export default function ImmigrationHallsApp() {
                   珠海市出入境智能服务厅地图
                 </h1>
                 <p className="text-xs md:text-sm text-gray-500 mt-0.5">
-                  共 {zhuhaiImmigrationHalls.length} 个办证服务点，点击标记或左侧列表查看详情
+                  共 {zhuhaiImmigrationHalls.length} 个办证服务点，点击标记或右侧列表查看详情
                 </p>
               </div>
             </div>
