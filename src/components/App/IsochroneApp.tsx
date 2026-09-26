@@ -14,7 +14,8 @@ import {
   ResultToolbar,
   POIListPanel 
 } from '@/components/Controls';
-import { ErrorMessage, WelcomeGuide } from '@/components/UI';
+import { ErrorMessage, WelcomeGuide, VersionBadge } from '@/components/UI';
+import Link from 'next/link';
 import { useIsochrones, useShareParams, useSelectionLimit } from '@/hooks';
 import { startBackgroundPreload } from '@/lib/cache-preloader';
 import { getCachedIsochrones } from '@/lib/isochrone-cache';
@@ -390,6 +391,18 @@ function IsochroneAppContent() {
         </button>
       )}
 
+      {!isResultView && (
+        <Link
+          href="/zhuhai-immigration"
+          className="absolute bottom-20 left-4 md:bottom-8 z-10 text-xs px-3 py-1.5 rounded-full
+                     bg-white/90 backdrop-blur border border-white/40 text-teal-800 shadow-md
+                     hover:bg-white transition-colors"
+        >
+          珠海出入境服务厅地图
+        </Link>
+      )}
+
+      <VersionBadge />
     </div>
   );
 }
