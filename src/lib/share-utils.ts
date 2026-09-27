@@ -175,6 +175,60 @@ export async function copyShareLink(
 
 // ============ 图片生成 ============
 
+/** 兼容不支持 roundRect 的浏览器（部分微信内置浏览器） */
+function ensureRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radii: number | number[]
+) {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, radii);
+    return;
+  }
+  const r = typeof radii === 'number' ? radii : radii[0] || 0;
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+function downloadPngBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    try {
+      canvas.toBlob((blob) => resolve(blob), 'image/png');
+    } catch (err) {
+      console.warn('toBlob threw, trying toDataURL fallback', err);
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        const byteString = atob(dataUrl.split(',')[1] || '');
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        resolve(new Blob([ab], { type: 'image/png' }));
+      } catch {
+        resolve(null);
+      }
+    }
+  });
+}
+
 /**
  * 生成分享图片
  * @returns Promise<boolean> 是否成功
@@ -206,11 +260,13 @@ export async function generateShareImage(options: ShareImageOptions): Promise<bo
     }
 
     // 1. 截图地图
+    // allowTaint 必须为 false：否则跨域瓦片会污染 canvas，Safari/微信里 toBlob 直接失败
     const canvas = await html2canvas(mapElement, {
       useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
+      allowTaint: false,
+      backgroundColor: '#e5e7eb',
       logging: false,
+      imageTimeout: 15000,
       ignoreElements: (element) => {
         return element.classList.contains('leaflet-control-container');
       }
@@ -224,7 +280,7 @@ export async function generateShareImage(options: ShareImageOptions): Promise<bo
     const totalPOIs = poiByLayer.reduce((sum, layer) => sum + layer.points.length, 0);
     
     const qrDisplaySize = isLandscape ? 72 : 80;
-    const qrGenerateSize = qrDisplaySize * dpr * 2;
+    const qrGenerateSize = Math.min(qrDisplaySize * dpr * 2, 320);
     
     const qrDataUrl = await QRCode.toDataURL(shareUrl, {
       margin: 1,
@@ -237,7 +293,10 @@ export async function generateShareImage(options: ShareImageOptions): Promise<bo
     });
     const qrImage = new Image();
     qrImage.src = qrDataUrl;
-    await new Promise((resolve) => { qrImage.onload = resolve; });
+    await new Promise((resolve, reject) => {
+      qrImage.onload = () => resolve(null);
+      qrImage.onerror = () => reject(new Error('QR code load failed'));
+    });
 
     // 3. 计算尺寸
     const footerHeight = isLandscape ? 100 : 120;
@@ -254,19 +313,26 @@ export async function generateShareImage(options: ShareImageOptions): Promise<bo
       }
     }
 
-    // 4. 创建高DPI Canvas
+    // 4. 创建高DPI Canvas（限制最大边，避免手机内存炸掉）
     const finalCanvas = document.createElement('canvas');
     const ctx = finalCanvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context not available');
 
-    const scale = Math.max(dpr, 2);
-    finalCanvas.width = mapWidth * scale;
-    finalCanvas.height = (mapHeight + footerHeight) * scale;
+    const maxEdge = 4096;
+    const rawScale = Math.max(dpr, 2);
+    const scaledW = mapWidth * rawScale;
+    const scaledH = (mapHeight + footerHeight) * rawScale;
+    const scale =
+      Math.max(scaledW, scaledH) > maxEdge
+        ? (rawScale * maxEdge) / Math.max(scaledW, scaledH)
+        : rawScale;
+    finalCanvas.width = Math.floor(mapWidth * scale);
+    finalCanvas.height = Math.floor((mapHeight + footerHeight) * scale);
     ctx.scale(scale, scale);
 
     // 绘制背景
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+    ctx.fillRect(0, 0, mapWidth, mapHeight + footerHeight);
 
     // 绘制地图
     ctx.drawImage(
@@ -287,50 +353,45 @@ export async function generateShareImage(options: ShareImageOptions): Promise<bo
     drawFooter(ctx, landmark, profile, rangeMinutes, qrImage, mapWidth, mapHeight, footerHeight, isLandscape, qrDisplaySize);
 
     // 5. 导出图片
-    return new Promise((resolve) => {
-      finalCanvas.toBlob(async (blob) => {
-        if (!blob) {
-          resolve(false);
-          return;
-        }
+    const blob = await canvasToBlob(finalCanvas);
+    if (!blob) {
+      throw new Error('Canvas export blocked (tainted or unsupported)');
+    }
 
-        try {
-          const item = new ClipboardItem({ 'image/png': blob });
-          await navigator.clipboard.write([item]);
-          
-          track('share_image_success', {
-            location: trackingLocation,
-            method: 'clipboard',
-            landmark: landmark.name,
-            city: landmark.city,
-            travel_mode: profile
-          });
-          
-          alert('图片已生成并复制到剪贴板！');
-          resolve(true);
-        } catch (err) {
-          console.warn('Clipboard API failed, falling back to download', err);
-          
-          track('share_image_success', {
-            location: trackingLocation,
-            method: 'download',
-            landmark: landmark.name,
-            city: landmark.city,
-            travel_mode: profile
-          });
-          
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `keda-map-${landmark.name}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          resolve(true);
-        }
-      }, 'image/png');
-    });
+    const filename = `keda-map-${landmark.name}.png`;
+
+    try {
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        const item = new ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([item]);
+
+        track('share_image_success', {
+          location: trackingLocation,
+          method: 'clipboard',
+          landmark: landmark.name,
+          city: landmark.city,
+          travel_mode: profile
+        });
+
+        alert('图片已生成并复制到剪贴板！');
+        return true;
+      }
+      throw new Error('Clipboard image write unavailable');
+    } catch (err) {
+      console.warn('Clipboard API failed, falling back to download', err);
+
+      track('share_image_success', {
+        location: trackingLocation,
+        method: 'download',
+        landmark: landmark.name,
+        city: landmark.city,
+        travel_mode: profile
+      });
+
+      downloadPngBlob(blob, filename);
+      alert('图片已生成并开始下载（当前环境不支持复制图片）');
+      return true;
+    }
 
   } catch (err) {
     console.error('Screenshot failed:', err);
@@ -342,7 +403,7 @@ export async function generateShareImage(options: ShareImageOptions): Promise<bo
       error: err instanceof Error ? err.message : 'unknown'
     });
     
-    alert('生成图片失败，请重试');
+    alert('生成图片失败，请重试。若在微信内打开，可改用系统浏览器再试。');
     return false;
   }
 }
@@ -387,7 +448,7 @@ function drawPOIPanel(
   
   ctx.fillStyle = bgGradient;
   ctx.beginPath();
-  ctx.roundRect(listX, listY, listPanelWidth, actualListHeight, 16);
+  ensureRoundRect(ctx, listX, listY, listPanelWidth, actualListHeight, 16);
   ctx.fill();
   
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
@@ -401,7 +462,7 @@ function drawPOIPanel(
 
   ctx.fillStyle = '#10b981';
   ctx.beginPath();
-  ctx.roundRect(listX + listPadding, currentY, 3, 18, 1.5);
+  ensureRoundRect(ctx, listX + listPadding, currentY, 3, 18, 1.5);
   ctx.fill();
   
   ctx.fillStyle = '#1f2937';
@@ -425,7 +486,7 @@ function drawPOIPanel(
     
     ctx.fillStyle = layer.fillColor;
     ctx.beginPath();
-    ctx.roundRect(listX + listPadding, currentY, pillWidth, pillHeight, pillHeight / 2);
+    ensureRoundRect(ctx, listX + listPadding, currentY, pillWidth, pillHeight, pillHeight / 2);
     ctx.fill();
     
     ctx.strokeStyle = layer.color;
@@ -504,7 +565,7 @@ function drawLegend(
   
   ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
   ctx.beginPath();
-  ctx.roundRect(legendX, legendY, legendWidth, legendHeight, 12);
+  ensureRoundRect(ctx, legendX, legendY, legendWidth, legendHeight, 12);
   ctx.fill();
 
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
@@ -526,7 +587,7 @@ function drawLegend(
     const boxSize = isLandscape ? 14 : 16;
     ctx.fillStyle = fillColor;
     ctx.beginPath();
-    ctx.roundRect(legendX + legendPadding, itemY, boxSize, boxSize, 3);
+    ensureRoundRect(ctx, legendX + legendPadding, itemY, boxSize, boxSize, 3);
     ctx.fill();
     
     ctx.strokeStyle = color;
@@ -612,7 +673,7 @@ function drawFooter(
     ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
     ctx.shadowBlur = 10;
     ctx.beginPath();
-    ctx.roundRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 8);
+    ensureRoundRect(ctx, qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 8);
     ctx.fill();
     ctx.shadowColor = 'transparent';
     
@@ -660,7 +721,7 @@ function drawFooter(
     ctx.shadowBlur = 10;
     ctx.shadowOffsetY = 2;
     ctx.beginPath();
-    ctx.roundRect(centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 7);
+    ensureRoundRect(ctx, centerX - logoSize / 2, logoY - logoSize / 2, logoSize, logoSize, 7);
     ctx.fill();
     ctx.shadowColor = 'transparent';
 
@@ -697,7 +758,7 @@ function drawFooter(
     ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
     ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.roundRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 10);
+    ensureRoundRect(ctx, qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 10);
     ctx.fill();
     ctx.shadowColor = 'transparent';
     

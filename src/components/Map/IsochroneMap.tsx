@@ -26,6 +26,8 @@ const fixLeafletIcons = () => {
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    // 允许 html2canvas 跨域读取图标，避免截图 canvas 被污染
+    crossOrigin: 'anonymous',
   });
 };
 
@@ -214,6 +216,7 @@ export default function IsochroneMap({
       <TileLayer
         attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'
         url="https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}"
+        crossOrigin="anonymous"
       />
       
       <MapControllerWrapper 
