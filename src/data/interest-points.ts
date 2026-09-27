@@ -1,4 +1,5 @@
 import { InterestPoint } from '@/types';
+import { zhuhaiImmigrationHalls } from './zhuhai-immigration-halls';
 
 // 上海热门兴趣点
 export const shanghaiInterestPoints: InterestPoint[] = [
@@ -79,11 +80,59 @@ export const shanghaiInterestPoints: InterestPoint[] = [
   }
 ];
 
+/** 珠海出入境智能服务厅（签注机）→ 等时圈内可发现的 POI */
+export const zhuhaiImmigrationInterestPoints: InterestPoint[] =
+  zhuhaiImmigrationHalls.map((hall) => ({
+    id: hall.id,
+    name: hall.name,
+    city: '珠海',
+    coordinates: hall.coordinates,
+    category: 'other' as const,
+    description: `${hall.address} · ${hall.hours}`,
+    rating: 5,
+  }));
+
+/** 珠海市大致范围（WGS-84），用于自定义选点时匹配签注机 POI */
+const ZHUHAI_BBOX = {
+  minLng: 113.10,
+  maxLng: 113.70,
+  minLat: 21.85,
+  maxLat: 22.45,
+};
+
+export function isInZhuhai(lng: number, lat: number): boolean {
+  return (
+    lng >= ZHUHAI_BBOX.minLng &&
+    lng <= ZHUHAI_BBOX.maxLng &&
+    lat >= ZHUHAI_BBOX.minLat &&
+    lat <= ZHUHAI_BBOX.maxLat
+  );
+}
+
 // 获取指定城市的兴趣点
 export const getInterestPointsByCity = (city: string): InterestPoint[] => {
   if (city === '上海' || city === '上海市') {
     return shanghaiInterestPoints;
   }
+  if (city === '珠海' || city === '珠海市') {
+    return zhuhaiImmigrationInterestPoints;
+  }
   return [];
 };
 
+/**
+ * 按出发坐标取兴趣点：城市名优先；自定义选点落在珠海时也返回签注机列表
+ */
+export const getInterestPointsForLocation = (
+  city: string,
+  coordinates?: [number, number]
+): InterestPoint[] => {
+  const byCity = getInterestPointsByCity(city);
+  if (byCity.length > 0) return byCity;
+
+  if (coordinates && isInZhuhai(coordinates[0], coordinates[1])) {
+    return zhuhaiImmigrationInterestPoints;
+  }
+
+  return [];
+};

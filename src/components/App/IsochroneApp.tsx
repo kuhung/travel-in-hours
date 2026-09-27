@@ -5,7 +5,7 @@ import { track } from '@vercel/analytics';
 import { CityLandmark, TravelProfile } from '@/types';
 import { defaultTimeRanges } from '@/data/isochrone-config';
 import { getLandmarkById } from '@/data/landmarks';
-import { getInterestPointsByCity } from '@/data/interest-points';
+import { getInterestPointsForLocation } from '@/data/interest-points';
 import { MapWrapper, MapLegend } from '@/components/Map';
 import { 
   CitySelector, 
@@ -15,7 +15,6 @@ import {
   POIListPanel 
 } from '@/components/Controls';
 import { ErrorMessage, WelcomeGuide, VersionBadge } from '@/components/UI';
-import Link from 'next/link';
 import { useIsochrones, useShareParams, useSelectionLimit } from '@/hooks';
 import { startBackgroundPreload } from '@/lib/cache-preloader';
 import { getCachedIsochrones } from '@/lib/isochrone-cache';
@@ -47,10 +46,13 @@ function IsochroneAppContent() {
     clearError 
   } = useIsochrones();
 
-  // 获取当前城市的兴趣点
+  // 兴趣点：珠海出发地 / 落在珠海的自定义选点 → 附近签注机；上海等城市走原有 POI
   const interestPoints = useMemo(() => {
     if (!selectedLandmark) return [];
-    return getInterestPointsByCity(selectedLandmark.city);
+    return getInterestPointsForLocation(
+      selectedLandmark.city,
+      selectedLandmark.coordinates
+    );
   }, [selectedLandmark]);
 
   // 按圈层分组的 POI（只在有等时圈数据时计算）
@@ -389,17 +391,6 @@ function IsochroneAppContent() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-      )}
-
-      {!isResultView && (
-        <Link
-          href="/zhuhai-immigration"
-          className="absolute bottom-20 left-4 md:bottom-8 z-10 text-xs px-3 py-1.5 rounded-full
-                     bg-white/90 backdrop-blur border border-white/40 text-teal-800 shadow-md
-                     hover:bg-white transition-colors"
-        >
-          珠海出入境服务厅地图
-        </Link>
       )}
 
       <VersionBadge />

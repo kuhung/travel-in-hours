@@ -30,6 +30,14 @@ export default function POIListPanel({
 
   if (totalPOIs === 0) return null;
 
+  const isImmigrationPOI = poiByLayer.some((layer) =>
+    layer.points.some((p) => p.id.startsWith('zh-imm-'))
+  );
+  const panelTitle = isImmigrationPOI ? '附近签注机' : '可达热点清单';
+  const panelSubtitle = isImmigrationPOI
+    ? `等时圈内共 ${totalPOIs} 个出入境智能服务厅`
+    : `共 ${totalPOIs} 个地点按圈层分布`;
+
   return (
     <div
       className="
@@ -57,8 +65,8 @@ export default function POIListPanel({
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-800">可达热点清单</h2>
-            <p className="text-xs text-gray-500">共 {totalPOIs} 个地点按圈层分布</p>
+            <h2 className="text-lg font-bold text-gray-800">{panelTitle}</h2>
+            <p className="text-xs text-gray-500">{panelSubtitle}</p>
           </div>
         </div>
       </div>
