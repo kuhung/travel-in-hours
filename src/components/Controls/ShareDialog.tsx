@@ -374,7 +374,7 @@ export default function ShareDialog({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-gray-900">{selectedPOI.name}</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
                     {getPOICategoryLabel(selectedPOI.category)}
                   </span>
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 text-slate-700">
@@ -405,7 +405,7 @@ export default function ShareDialog({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
                   <span>复制交互链接</span>
@@ -418,14 +418,14 @@ export default function ShareDialog({
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs transition-colors cursor-pointer shrink-0"
+                className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs transition-colors cursor-pointer shrink-0"
               >
                 {copyStatus === 'copied' ? '已复制链接' : '复制链接'}
               </button>
             </div>
 
             {copyStatus === 'copied' && (
-              <p className="text-[11px] text-blue-600 font-medium">
+              <p className="text-[11px] text-emerald-600 font-medium">
                 ✓ 链接已复制到剪贴板，可直接粘贴发送
               </p>
             )}
@@ -449,7 +449,7 @@ export default function ShareDialog({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span>静态分享卡片</span>
@@ -463,7 +463,7 @@ export default function ShareDialog({
                 <button
                   type="button"
                   onClick={handleGenerateImage}
-                  className="py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs transition-colors cursor-pointer shrink-0"
+                  className="py-1.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-medium text-xs transition-colors cursor-pointer shrink-0"
                 >
                   生成图片
                 </button>
@@ -472,9 +472,9 @@ export default function ShareDialog({
 
             {/* 生成中状态 */}
             {imageState === 'generating' && (
-              <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs text-blue-800">
-                  <svg className="w-4 h-4 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+              <div className="p-4 bg-teal-50/60 rounded-xl border border-teal-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-teal-800">
+                  <svg className="w-4 h-4 animate-spin text-teal-600" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -483,7 +483,7 @@ export default function ShareDialog({
                 <button
                   type="button"
                   onClick={handleCancelGeneration}
-                  className="text-xs text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                  className="text-xs text-teal-700 hover:text-teal-900 underline cursor-pointer"
                 >
                   取消
                 </button>
@@ -520,7 +520,7 @@ export default function ShareDialog({
                   <button
                     type="button"
                     onClick={handleSaveImage}
-                    className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -539,7 +539,7 @@ export default function ShareDialog({
                 </div>
 
                 {saveStatus === 'initiated' && (
-                  <p className="text-[11px] text-blue-600 font-medium">
+                  <p className="text-[11px] text-emerald-600 font-medium">
                     ✓ 已发起下载，请在浏览器下载记录中查看。手机端亦可长按上方图片存储。
                   </p>
                 )}
@@ -551,7 +551,7 @@ export default function ShareDialog({
                       onClick={() => track('share_save_requested', { method: 'open_preview', share_target: targetMode })}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block text-blue-700 font-medium underline"
+                      className="inline-block text-emerald-700 font-medium underline"
                     >
                       在新标签页中打开原始图片
                     </a>

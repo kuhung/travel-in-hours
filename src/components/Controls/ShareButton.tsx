@@ -65,10 +65,10 @@ export default function ShareButton({
       <button 
         type="button"
         onClick={onOpenShare}
-        className="w-full py-3 px-4 rounded-xl bg-blue-600
-                   text-white text-sm font-medium hover:bg-blue-700
+        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600
+                   text-white text-sm font-medium hover:from-emerald-400 hover:to-teal-500
                    transition-all flex items-center justify-center gap-2 
-                   shadow-lg shadow-blue-500/20 active:scale-[0.98] cursor-pointer"
+                   shadow-lg shadow-emerald-500/20 active:scale-[0.98] cursor-pointer"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 

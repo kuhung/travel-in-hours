@@ -14,19 +14,18 @@ export const MapLegend: React.FC<MapLegendProps> = ({
       <div className="text-xs font-semibold text-gray-500 mb-2">等时圈预估范围</div>
       <div className="flex flex-col gap-2">
         {rangeMinutes.map((minutes) => {
-          const { color, fillColor } = getIsochroneStyle(minutes);
+          const { color, fillColor, dashArray } = getIsochroneStyle(minutes);
           return (
             <div key={minutes} className="flex items-center gap-2">
               <span
-                className="w-5 h-3.5 rounded-sm shrink-0 border"
+                className="w-4 h-4 rounded-sm border opacity-80 shrink-0"
                 style={{
                   backgroundColor: fillColor,
                   borderColor: color,
-                  borderWidth: '1.5px',
-                  borderStyle: 'solid',
+                  borderStyle: dashArray ? (minutes === 60 ? 'dotted' : 'dashed') : 'solid'
                 }}
               />
-              <span className="text-xs text-slate-800 font-medium">
+              <span className="text-xs text-gray-700 font-medium">
                 {formatExclusiveTierTime(minutes, rangeMinutes)}
               </span>
             </div>
