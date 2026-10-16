@@ -5,7 +5,8 @@ import {
   MapContainer, 
   TileLayer, 
   GeoJSON, 
-  Marker, 
+  Marker,
+  CircleMarker,
   Popup, 
   ZoomControl, 
   useMap 
@@ -17,11 +18,13 @@ import {
   getIsochroneStyle,
   sortIsochronesForRender,
   DESTINATION_STYLE,
+  VISUAL_THEME,
 } from '@/data/isochrone-config';
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/lib/coord-transform';
 import { POIWithLayer, formatExclusiveTierTime } from '@/lib/poi-utils';
 import { getPOICategoryLabel, createAmapNavUrl, resolveNavigationAction, isMobileDevice } from '@/lib/navigation-utils.ts';
 import type { MapPaddingResult } from '@/lib/layout-utils';
+import { focusMapOnLocation } from '@/lib/map-viewport';
 
 // 修复 Leaflet 默认图标问题
 const fixLeafletIcons = () => {
@@ -50,6 +53,7 @@ interface IsochroneMapProps {
   candidateCoordinates?: [number, number] | null; // [lng, lat] (WGS-84)
   mapPadding?: MapPaddingResult;
   committedTimestamp?: number;
+  locationFocus?: CityLandmark | null;
 }
 
 export default function IsochroneMap({
@@ -66,6 +70,7 @@ export default function IsochroneMap({
   candidateCoordinates = null,
   mapPadding,
   committedTimestamp,
+  locationFocus = null,
 }: IsochroneMapProps) {
   useEffect(() => {
     fixLeafletIcons();
@@ -124,6 +129,7 @@ export default function IsochroneMap({
       fillOpacity: style.opacity,
       weight: style.weight,
       opacity: style.strokeOpacity,
+      dashArray: style.dashArray,
     };
   }, []);
 
@@ -171,6 +177,12 @@ export default function IsochroneMap({
     return [lat, lng];
   }, [candidateCoordinates]);
 
+  const locationPosition = useMemo((): [number, number] | null => {
+    if (!locationFocus) return null;
+    const [lng, lat] = wgs84ToGcj02(...locationFocus.coordinates);
+    return [lat, lng];
+  }, [locationFocus]);
+
   // 选中的 POI 坐标（GCJ-02，供可用视口 panInside 避让定位）
   const selectedPOIPosition = useMemo(() => {
     if (!selectedPOIId) return null;
@@ -178,7 +190,7 @@ export default function IsochroneMap({
     return found ? found.position : null;
   }, [poiWithLayers, selectedPOIId]);
 
-  // 创建编号气泡图标（支持高亮与选中态，非危险红标识）
+  // 创建编号气泡图标（支持高亮与选中态，深色选中标识）
   const createNumberIcon = useCallback((index: number, layerMinutes: number, isHighlighted: boolean) => {
     const colors = getColorForRange(layerMinutes);
     const size = isHighlighted ? 42 : 32;
@@ -234,11 +246,11 @@ export default function IsochroneMap({
           position: relative;
           width: ${size}px;
           height: ${size * 1.5}px;
-          filter: drop-shadow(0 4px 8px rgba(245, 158, 11, 0.5));
+          filter: drop-shadow(0 4px 8px rgba(255, 75, 35, 0.3));
           animation: bounce 0.6s infinite alternate;
         ">
           <svg viewBox="0 0 32 48" width="100%" height="100%" style="overflow: visible;">
-            <path d="${pinPath}" fill="#f59e0b" stroke="white" stroke-width="2.5" />
+            <path d="${pinPath}" fill="${VISUAL_THEME.accent}" stroke="white" stroke-width="2.5" />
             <circle cx="16" cy="16" r="9" fill="white" />
           </svg>
           <div style="
@@ -249,7 +261,7 @@ export default function IsochroneMap({
             text-align: center;
             font-size: 11px;
             font-weight: 800;
-            color: #d97706;
+            color: ${VISUAL_THEME.accentInk};
           ">选</div>
         </div>
       `,
@@ -287,6 +299,7 @@ export default function IsochroneMap({
         mapPadding={mapPadding}
         committedTimestamp={committedTimestamp}
         selectedPOIPosition={selectedPOIPosition}
+        locationFocus={locationFocus}
       />
       
       {/* 渲染等时圈 - 从大到小渲染以确保小的在上面 */}
@@ -299,6 +312,12 @@ export default function IsochroneMap({
         />
       ))}
       
+      {locationPosition && (
+        <CircleMarker center={locationPosition} radius={10} pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#1d4ed8', fillOpacity: 1 }}>
+          <Popup>当前位置 · 待生成可达范围</Popup>
+        </CircleMarker>
+      )}
+
       {/* 地标标记（已提交或当前选中的起点） */}
       {landmark && markerPosition && (
         <Marker position={markerPosition}>
@@ -309,7 +328,7 @@ export default function IsochroneMap({
               {landmark.description && (
                 <div className="text-xs text-gray-500 mt-1">{landmark.description}</div>
               )}
-              <div className="mt-2 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+              <div className="mt-2 text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block">
                 起点
               </div>
             </div>
@@ -393,7 +412,7 @@ export default function IsochroneMap({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="mt-2.5 w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg flex items-center justify-center gap-1 shadow-sm cursor-pointer transition-colors text-center"
+                        className="mt-2.5 w-full py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg flex items-center justify-center gap-1 shadow-sm cursor-pointer transition-colors text-center"
                       >
                         <span>在外部地图中导航</span>
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,6 +452,7 @@ function MapControllerWrapper({
   mapPadding,
   committedTimestamp,
   selectedPOIPosition,
+  locationFocus,
 }: { 
   center: [number, number]; 
   zoom: number;
@@ -444,6 +464,7 @@ function MapControllerWrapper({
   landmark: CityLandmark | null;
   mapPadding?: MapPaddingResult;
   committedTimestamp?: number;
+  locationFocus?: CityLandmark | null;
   selectedPOIPosition?: [number, number] | null;
 }) {
   const map = useMapHook();
@@ -489,8 +510,18 @@ function MapControllerWrapper({
     }
   }, [selectedPOIPosition, map, mapPadding]);
 
+  // 定位是独立的视口意图：即使保留旧结果，也立即展示新位置。
+  const lastLocationFocusRef = useRef<CityLandmark | null>(null);
+  useEffect(() => {
+    if (!locationFocus || lastLocationFocusRef.current === locationFocus) return;
+    lastLocationFocusRef.current = locationFocus;
+    focusMapOnLocation(map, locationFocus.coordinates, mapPadding,
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }, [locationFocus, map, mapPadding]);
+
   // 基础视图控制（仅在无等时圈时依地标定位）
   useEffect(() => {
+    if (locationFocus) return;
     if (isochrones.length === 0) {
       if (landmark?.id?.startsWith('custom-')) {
         map.panTo(center, { animate: true });
@@ -498,13 +529,13 @@ function MapControllerWrapper({
         map.setView(center, zoom, { animate: true });
       }
     }
-  }, [center, map, zoom, isochrones.length, landmark]);
+  }, [center, map, zoom, isochrones.length, landmark, locationFocus]);
 
   // 自动适配等时圈范围：
   // 1. 仅在 committedTimestamp 产生新快照时触发一次 fitBounds，严格保留用户手动拖拽与缩放；
   // 2. 动态 import 增加取消守卫与递增版本守卫，确保最新快照胜出并清理在途异步回调。
   useEffect(() => {
-    if (isochrones.length === 0) return;
+    if (isochrones.length === 0 || locationFocus) return;
 
     // 若已经为当前 committed 快照适配过范围，则不再因其他状态变更反复自动 fit
     if (committedTimestamp && committedTimestamp === lastFittedTimestampRef.current) {
@@ -542,7 +573,7 @@ function MapControllerWrapper({
     return () => {
       cancelled = true;
     };
-  }, [isochrones, map, committedTimestamp, mapPadding]);
+  }, [isochrones, map, committedTimestamp, mapPadding, locationFocus]);
 
   // 选点模式光标样式更新
   useEffect(() => {

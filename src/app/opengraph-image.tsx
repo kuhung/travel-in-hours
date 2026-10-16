@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { VISUAL_THEME } from '@/data/isochrone-config';
 
 export const runtime = 'edge';
 
@@ -16,8 +17,8 @@ export default async function Image() {
       <div
         style={{
           fontSize: 60,
-          background: '#0f172a',
-          color: 'white',
+          background: VISUAL_THEME.surface,
+          color: VISUAL_THEME.ink,
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -36,7 +37,7 @@ export default async function Image() {
             left: '-10%',
             width: '120%',
             height: '120%',
-            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%)',
             zIndex: 0,
           }}
         />
@@ -47,25 +48,23 @@ export default async function Image() {
             style={{
               fontSize: 80,
               fontWeight: 'bold',
-              background: 'linear-gradient(to right, #34d399, #10b981)',
-              backgroundClip: 'text',
-              color: 'transparent',
+              color: VISUAL_THEME.ink,
             }}
           >
             出行可达地图
           </div>
-          <div style={{ fontSize: 40, color: '#94a3b8', marginTop: 20 }}>
+          <div style={{ fontSize: 40, color: '#475569', marginTop: 20 }}>
             Travel Reach Map
           </div>
           <div
             style={{
               fontSize: 32,
-              color: '#f1f5f9',
+              color: VISUAL_THEME.primaryDark,
               marginTop: 40,
               padding: '10px 30px',
-              border: '2px solid #334155',
+              border: '2px solid #bfdbfe',
               borderRadius: '50px',
-              background: 'rgba(30, 41, 59, 0.5)',
+              background: '#eff6ff',
             }}
           >
             探索你的 1 小时生活圈 🚗 🚴 🚶

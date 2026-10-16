@@ -546,32 +546,15 @@ test('9. 样式单一来源与契约验证 (isochrone-config.ts 单一配置源�
   } = await import('../src/data/isochrone-config.ts');
   const { LAYER_COLOR_MAP, groupPOIsByLayer } = await import('../src/lib/poi-utils.ts');
 
-  // 12.1 验证三档配色：15m 青绿、30m 蓝、60m 靛蓝
-  assert.strictEqual(isochroneColors.length, 3, '等时圈固定支持 3 档配置');
-  const style15 = getColorForRange(15);
-  const style30 = getColorForRange(30);
-  const style60 = getColorForRange(60);
-
-  assert.strictEqual(style15.color, '#0f766e', '15m 边框/墨水应为深青绿 Teal-700');
-  assert.strictEqual(style15.fillColor, '#2dd4bf', '15m 填充面应为明亮青绿 Teal-400');
-  assert.strictEqual(style15.opacity, 0.32, '15m 透明度应清晰聚焦');
-
-  assert.strictEqual(style30.color, '#1d4ed8', '30m 边框/墨水应为纯蓝 Blue-700');
-  assert.strictEqual(style30.fillColor, '#60a5fa', '30m 填充面应为中蓝 Blue-400');
-  assert.strictEqual(style30.opacity, 0.23, '30m 透明度应适中均衡');
-
-  assert.strictEqual(style60.color, '#4338ca', '60m 边框/墨水应为靛蓝 Indigo-700');
-  assert.strictEqual(style60.fillColor, '#818cf8', '60m 填充面应为浅靛蓝 Indigo-400');
-  assert.strictEqual(style60.opacity, 0.16, '60m 大圈透明度应淡，保留道路与底图');
-
-  // 12.2 大圈淡小圈清晰单调性验证
-  assert.ok(style15.opacity > style30.opacity, '15m 透明度必须大于 30m');
-  assert.ok(style30.opacity > style60.opacity, '30m 透明度必须大于 60m');
-
-  // 12.3 getIsochroneStyle 完整样式 helper 契约
-  const fullStyle = getIsochroneStyle(15);
-  assert.strictEqual(fullStyle.weight, 2, '描边线宽应为 2');
-  assert.strictEqual(fullStyle.strokeOpacity, 0.85, '描边透明度应为 0.85');
+  // 三档色相与线型区分；地图和导出共用同一配置。
+  assert.strictEqual(isochroneColors.length, 3);
+  const [style15, style30, style60] = [15, 30, 60].map(getColorForRange);
+  assert.deepEqual([style15.color, style30.color, style60.color], ['#c2410c', '#1d4ed8', '#2563eb']);
+  assert.ok(style15.opacity > style30.opacity);
+  assert.ok(style30.opacity > style60.opacity);
+  const fullStyles = [15, 30, 60].map(getIsochroneStyle);
+  assert.deepEqual(fullStyles.map(s => s.dashArray), [undefined, '10 6', '3 6']);
+  assert.ok(fullStyles.every(s => s.weight === 3 && s.strokeOpacity === 1));
 
   // 12.4 LAYER_COLOR_MAP 必须与单一事实源动态对齐
   assert.strictEqual(LAYER_COLOR_MAP[15]?.color, style15.color);
@@ -594,9 +577,9 @@ test('9. 样式单一来源与契约验证 (isochrone-config.ts 单一配置源�
   assert.strictEqual(grouped.find(g => g.layerMinutes === 30)?.color, style30.color);
   assert.strictEqual(grouped.find(g => g.layerMinutes === 60)?.color, style60.color);
 
-  // 12.6 目的地样式契约：深青色，摆脱危险错误红混淆
-  assert.strictEqual(DESTINATION_STYLE.ink, '#0f766e');
-  assert.strictEqual(DESTINATION_STYLE.badgeBg, '#0f766e');
+  // 12.6 目的地样式契约：深色标记与圈层区分
+  assert.strictEqual(DESTINATION_STYLE.ink, '#111827');
+  assert.strictEqual(DESTINATION_STYLE.badgeBg, '#111827');
   assert.strictEqual(DESTINATION_STYLE.badgeText, '#ffffff');
   assert.strictEqual(DESTINATION_STYLE.stroke, '#ffffff');
 });

@@ -111,13 +111,13 @@ export default function POIListPanel({
         <button
           type="button"
           onClick={() => onToggleOpen?.(true)}
-          className="hidden md:flex fixed top-20 left-4 z-20 items-center gap-2 px-3.5 py-2.5 bg-white/95 backdrop-blur-md shadow-lg rounded-xl border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-300 transition-all cursor-pointer font-medium text-xs group"
+          className="hidden md:flex fixed top-20 left-4 z-20 items-center gap-2 px-3.5 py-2.5 bg-white/95 backdrop-blur-md shadow-lg rounded-xl border border-gray-200 text-gray-700 hover:text-blue-700 hover:border-blue-300 transition-all cursor-pointer font-medium text-xs group"
           aria-label="展开地点清单"
         >
-          <span className={`w-2 h-2 rounded-full ${totalPOIs > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span className={`w-2 h-2 rounded-full ${totalPOIs > 0 ? 'bg-blue-500' : 'bg-amber-500'}`} />
           <span className="font-semibold">地点清单</span>
-          <span className="text-gray-400 text-[11px]">({totalPOIs})</span>
-          <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-600 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <span className="text-slate-600 text-[11px]">({totalPOIs})</span>
+          <svg className="w-3.5 h-3.5 text-slate-600 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
@@ -129,7 +129,7 @@ export default function POIListPanel({
           className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2.5 bg-white/95 backdrop-blur-md shadow-xl rounded-full border border-gray-200 text-gray-800 font-semibold text-xs transition-all active:scale-95 cursor-pointer"
           aria-label="展开地点清单"
         >
-          <span className={`w-2 h-2 rounded-full ${totalPOIs > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span className={`w-2 h-2 rounded-full ${totalPOIs > 0 ? 'bg-blue-500' : 'bg-amber-500'}`} />
           <span>查看地点清单 ({totalPOIs})</span>
           <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -156,7 +156,7 @@ export default function POIListPanel({
       {/* 移动端明确的收起操作条（替换原有无行为的假拖拽指示条） */}
       <div className="md:hidden flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${totalPOIs > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span className={`w-2 h-2 rounded-full ${totalPOIs > 0 ? 'bg-blue-500' : 'bg-amber-500'}`} />
           <span className="text-xs font-bold text-gray-800">{isAllImmigration ? `出入境服务厅 (${totalPOIs})` : `可达地点 (${totalPOIs})`}</span>
           {isPartial && (
             <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded">
@@ -180,7 +180,7 @@ export default function POIListPanel({
       {/* 桌面端头部 */}
       <div className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3.5 items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -191,7 +191,7 @@ export default function POIListPanel({
               <h2 className="text-sm font-bold text-gray-800 truncate">{effectiveTitle}</h2>
               {isPartial && (
                 <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1 py-0.2 rounded shrink-0">
-                  跨界
+                  精选收录
                 </span>
               )}
             </div>
@@ -203,7 +203,7 @@ export default function POIListPanel({
         <button
           type="button"
           onClick={() => onToggleOpen?.(false)}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors"
+          className="p-1.5 rounded-lg text-slate-600 hover:text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors"
           title="收起清单面板"
           aria-label="收起清单面板"
         >
@@ -217,18 +217,18 @@ export default function POIListPanel({
       <div className="overflow-y-auto p-4 space-y-5 flex-1 min-h-0">
         {/* 空态处理：独立区分 uncovered / covered-empty / partial / 数据错误，绝不空白暗示“没有地方” */}
         {totalPOIs === 0 ? (
-          <div className="bg-gray-50/80 border border-gray-200 rounded-2xl p-4 text-center space-y-3 my-auto">
-            <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center bg-amber-100 text-amber-700">
+          <div className="bg-slate-50 border border-slate-300 rounded-2xl p-4 text-center space-y-3 my-auto">
+            <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center bg-blue-100 text-blue-800">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
               <h3 className="text-sm font-bold text-gray-800">{statusMeta.title}</h3>
-              <p className="text-xs text-gray-600 mt-1 leading-relaxed text-left">
+              <p className="text-sm text-slate-700 mt-2 leading-relaxed text-left">
                 {statusMeta.explanation}
               </p>
-              <p className="text-[11px] text-gray-400 mt-2 leading-relaxed text-left">
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed text-left">
                 {statusMeta.helpfulNote}
               </p>
             </div>
@@ -239,9 +239,9 @@ export default function POIListPanel({
                 <button
                   type="button"
                   onClick={onViewExample}
-                  className="w-full py-2 px-3 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-sm"
+                  className="w-full py-2 px-3 text-xs font-semibold rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
                 >
-                  先看上海示例
+                  查看上海地点示例
                 </button>
               )}
               {statusMeta.canEditOrigin && onEdit && (
@@ -269,7 +269,7 @@ export default function POIListPanel({
             {/* 跨边界部分覆盖时的收录说明条 */}
             {isPartial && (
               <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-2.5 text-[11px] text-amber-800 leading-snug">
-                ⚠️ 当前可达范围部分超出收录边界，仅显示已收录区域内的地点。
+                地图已显示可达范围，清单展示其中已收录的精选地点。
               </div>
             )}
 
@@ -289,7 +289,7 @@ export default function POIListPanel({
                         {exclusiveLabel} 预估可达
                       </span>
                     </div>
-                    <span className="text-[11px] font-semibold text-gray-400">
+                    <span className="text-[11px] font-semibold text-slate-600">
                       {layer.points.length} 处
                     </span>
                   </div>
@@ -307,9 +307,9 @@ export default function POIListPanel({
                           aria-label={`选择地点 ${poi.name}，${exclusiveLabel}预估可达`}
                           className={`
                             flex items-start gap-2.5 p-2.5 rounded-xl border
-                            cursor-pointer transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500
+                            cursor-pointer transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500
                             ${isSelected
-                              ? 'bg-emerald-50/70 border-emerald-500 shadow-sm ring-1 ring-emerald-500'
+                              ? 'bg-blue-50/70 border-blue-500 shadow-sm ring-1 ring-blue-500'
                               : 'bg-gray-50/70 hover:bg-gray-100 border-gray-100'
                             }
                           `}
@@ -338,7 +338,7 @@ export default function POIListPanel({
                                 {poi.name}
                               </span>
                               {isSelected && (
-                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded shrink-0">
+                                <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded shrink-0">
                                   已选
                                 </span>
                               )}
@@ -382,7 +382,7 @@ export default function POIListPanel({
       )}
 
       {/* 底部估算说明 */}
-      <div className="px-4 py-2 border-t border-gray-100 bg-white text-[10px] text-gray-400 text-center shrink-0">
+      <div className="px-4 py-2 border-t border-gray-100 bg-white text-[10px] text-slate-600 text-center shrink-0">
         基于路网模型实估生活圈{disclaimer ? ` · ${disclaimer}` : ''}
       </div>
     </div>

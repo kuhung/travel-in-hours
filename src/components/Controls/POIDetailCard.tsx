@@ -169,7 +169,7 @@ export default function POIDetailCard({
             <h3 className="text-sm font-bold text-gray-900 truncate" title={poi.name}>
               {poi.name}
             </h3>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 shrink-0">
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800 shrink-0">
               {categoryLabel}
             </span>
             <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 shrink-0">
@@ -245,7 +245,7 @@ export default function POIDetailCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleNavClick}
-            className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-center"
+            className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-center"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -295,7 +295,7 @@ export default function POIDetailCard({
             className="py-2 px-3 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 active:scale-[0.99] text-gray-700 font-medium text-xs flex items-center justify-center gap-1 transition-all cursor-pointer shrink-0"
             title="分享此地点卡片与链接"
           >
-            <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
             <span>分享此地</span>
@@ -305,12 +305,12 @@ export default function POIDetailCard({
 
       {/* 原生打开请求状态反馈（不假测弹窗是否拦截，仅给出如实说明与指引） */}
       {navRequested && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-[11px] text-emerald-800 flex items-start justify-between gap-2">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-[11px] text-blue-800 flex items-start justify-between gap-2">
           <span>已请求打开外部地图页面（高德开放平台）。如未正常打开，请检查浏览器弹窗设置或点击下方复制手动使用。</span>
           <button
             type="button"
             onClick={() => setNavRequested(false)}
-            className="text-emerald-700 hover:text-emerald-900 underline text-[10px] shrink-0 cursor-pointer"
+            className="text-blue-700 hover:text-blue-900 underline text-[10px] shrink-0 cursor-pointer"
           >
             知道了
           </button>
@@ -319,7 +319,7 @@ export default function POIDetailCard({
 
       {/* 复制成功提示 */}
       {copyStatus === 'copied' && (
-        <div className="text-[11px] text-emerald-700 font-medium text-center">
+        <div className="text-[11px] text-blue-700 font-medium text-center">
           ✓ 已复制地点与坐标（含 WGS-84 / GCJ-02 与导航链接）
         </div>
       )}

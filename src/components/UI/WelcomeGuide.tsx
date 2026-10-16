@@ -41,12 +41,12 @@ export function WelcomeGuide({
         )}
 
         {/* 装饰背景 */}
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-36 h-36 bg-emerald-100 rounded-full opacity-60 blur-2xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-36 h-36 bg-teal-100 rounded-full opacity-50 blur-2xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-36 h-36 bg-blue-100 rounded-full opacity-60 blur-2xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-36 h-36 bg-blue-100 rounded-full opacity-50 blur-2xl pointer-events-none" />
 
         {/* 内容 */}
         <div className="relative z-10 flex flex-col items-center text-center">
-          <div className="w-14 h-14 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25 mb-4 text-white">
+          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25 mb-4 text-white">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -57,7 +57,7 @@ export function WelcomeGuide({
           </h2>
           
           <p className="text-gray-600 mb-5 leading-relaxed text-xs sm:text-sm">
-            支持固定 <span className="font-semibold text-emerald-700">15 / 30 / 60 分钟</span> 三档可达范围估算。
+            支持固定 <span className="font-semibold text-blue-700">15 / 30 / 60 分钟</span> 三档可达范围估算。
             <br />
             按用户意图从真实起点出发，或先看典型示例：
           </p>
@@ -78,7 +78,7 @@ export function WelcomeGuide({
                 <button
                   type="button"
                   onClick={onRetryLocating}
-                  className="mt-2 text-xs font-semibold text-emerald-700 hover:text-emerald-800 underline cursor-pointer"
+                  className="mt-2 text-xs font-semibold text-blue-700 hover:text-blue-800 underline cursor-pointer"
                 >
                   重试定位
                 </button>
@@ -93,7 +93,7 @@ export function WelcomeGuide({
               type="button"
               onClick={onExploreMyLocation}
               disabled={isLocating}
-              className="w-full p-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-medium transition-all shadow-md shadow-emerald-600/20 flex items-center justify-between group disabled:opacity-75 disabled:cursor-wait"
+              className="w-full p-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-medium transition-all shadow-md shadow-blue-600/20 flex items-center justify-between group disabled:opacity-75 disabled:cursor-wait"
             >
               <div className="flex items-center gap-3 text-left">
                 <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
@@ -110,12 +110,12 @@ export function WelcomeGuide({
                   <div className="font-semibold text-sm">
                     {isLocating ? '正在获取位置...' : '从我的位置探索'}
                   </div>
-                  <div className="text-[11px] text-emerald-100">
+                  <div className="text-[11px] text-blue-100">
                     需浏览器位置权限 · 免配额快速探索
                   </div>
                 </div>
               </div>
-              <svg className="w-4 h-4 text-emerald-200 group-hover:translate-x-0.5 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-blue-200 group-hover:translate-x-0.5 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -127,7 +127,7 @@ export function WelcomeGuide({
               className="w-full p-3.5 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-200 text-gray-900 rounded-xl font-medium transition-all flex items-center justify-between group"
             >
               <div className="flex items-center gap-3 text-left">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold text-xs">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 font-bold text-xs">
                   示例
                 </div>
                 <div>

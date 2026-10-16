@@ -223,10 +223,10 @@ test('3. 空态与错误状态诚实解释契约：uncovered/covered-empty/parti
     profile: 'driving-car',
   });
   assert.strictEqual(descUncovered.badgeVariant, 'info');
-  assert.strictEqual(descUncovered.title, '超出当前收录范围');
-  assert.ok(descUncovered.explanation.includes('超出已收录区域'));
+  assert.strictEqual(descUncovered.title, '可达范围已生成');
+  assert.ok(descUncovered.explanation.includes('可达范围已显示在地图上'));
   assert.ok(descUncovered.explanation.includes('收录上海精选热门地标与珠海出入境服务厅'));
-  assert.ok(descUncovered.helpfulNote.includes('已收录核心城区'), '提供正面操作指引');
+  assert.ok(descUncovered.helpfulNote.includes('仍可在地图上查看'), '提供正面操作指引');
   assert.strictEqual(descUncovered.canViewExample, true, '应允许看示例');
   assert.strictEqual(descUncovered.canEditOrigin, true, '应允许修改出发点');
 
@@ -238,11 +238,11 @@ test('3. 空态与错误状态诚实解释契约：uncovered/covered-empty/parti
     landmarkName: '崇明岛东滩',
     profile: 'foot-walking',
   });
-  assert.strictEqual(descCoveredEmpty.badgeVariant, 'warning');
+  assert.strictEqual(descCoveredEmpty.badgeVariant, 'info');
   assert.strictEqual(descCoveredEmpty.title, '范围内暂无收录地点');
-  assert.ok(descCoveredEmpty.explanation.includes('步行 60 分钟预估范围内暂未收录'));
-  assert.ok(descCoveredEmpty.helpfulNote.includes('尝试切换更快速的出行方式'), '提供正面操作指引');
-  assert.strictEqual(descCoveredEmpty.canChangeMode, true, '应建议切换更快方式');
+  assert.ok(descCoveredEmpty.explanation.includes('步行可达范围已显示在地图上'));
+  assert.ok(descCoveredEmpty.helpfulNote.includes('无需更换出发点'), '提供正面操作指引');
+  assert.strictEqual(descCoveredEmpty.canChangeMode, true, '仍允许用户自行调整方式');
   assert.strictEqual(descCoveredEmpty.canEditOrigin, true);
 
   // 3.3 partial：跨边界未匹配
@@ -253,9 +253,9 @@ test('3. 空态与错误状态诚实解释契约：uncovered/covered-empty/parti
     landmarkName: '青浦边界',
     profile: 'driving-car',
   });
-  assert.strictEqual(descPartial.title, '部分范围跨越收录边界');
-  assert.strictEqual(descPartial.badgeText, '跨边界未匹配');
-  assert.ok(descPartial.explanation.includes('部分超出了本地收录边界'));
+  assert.strictEqual(descPartial.title, '可达范围已生成');
+  assert.strictEqual(descPartial.badgeText, '查看地图范围');
+  assert.ok(descPartial.explanation.includes('可直接缩放、拖动查看'));
 
   // 3.4 dataError：数据处理错误
   const descDataError = getCoverageStatusDescription({

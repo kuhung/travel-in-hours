@@ -93,14 +93,14 @@ export default function ResultToolbar({
         onClick={handleEdit}
         className="
           bg-white/95 backdrop-blur-md shadow-lg border border-white/40
-          text-gray-700 hover:bg-white hover:text-emerald-700 hover:border-emerald-200
+          text-gray-700 hover:bg-white hover:text-blue-700 hover:border-blue-200
           transition-all duration-200
           flex items-center gap-2.5 py-2 px-3 sm:px-3.5 rounded-xl
           cursor-pointer group text-left max-w-full
         "
         aria-label="查看与修改当前探索条件"
       >
-        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
           </svg>
@@ -120,7 +120,7 @@ export default function ResultToolbar({
                 示例
               </span>
             )}
-            <span className="text-[11px] text-emerald-600 font-semibold group-hover:underline shrink-0 ml-1">
+            <span className="text-[11px] text-blue-600 font-semibold group-hover:underline shrink-0 ml-1">
               {isShared ? '分享的探索' : '修改'}
             </span>
           </div>
@@ -130,7 +130,7 @@ export default function ResultToolbar({
             <span>·</span>
             <span>15/30/60m</span>
             <span>·</span>
-            <span className={totalPOIs > 0 ? "text-emerald-700 font-medium" : "text-amber-700 font-medium"}>
+            <span className={totalPOIs > 0 ? "text-blue-700 font-medium" : "text-amber-700 font-medium"}>
               {statusText}
             </span>
           </div>
@@ -138,7 +138,7 @@ export default function ResultToolbar({
       </button>
 
       {isShared && onExploreMyLocation && (
-        <button type="button" onClick={onExploreMyLocation} className="rounded-xl bg-white/95 border border-slate-200 px-2 text-xs font-semibold text-emerald-700 max-w-20 shrink-0">
+        <button type="button" onClick={onExploreMyLocation} className="rounded-xl bg-white/95 border border-slate-200 px-2 text-xs font-semibold text-blue-700 max-w-20 shrink-0">
           探索我的附近
         </button>
       )}
@@ -149,9 +149,9 @@ export default function ResultToolbar({
           type="button"
           onClick={handleShareClick}
           className="
-            h-full bg-gradient-to-r from-emerald-500 to-teal-600 
-            text-white hover:from-emerald-400 hover:to-teal-500
-            shadow-lg shadow-emerald-500/20 border border-emerald-400/20
+            h-full bg-blue-600
+            text-white hover:bg-blue-700
+            shadow-lg shadow-blue-500/20 border border-blue-400/20
             transition-all duration-200
             flex items-center gap-2 py-2 px-3 sm:px-3.5 rounded-xl cursor-pointer
           "

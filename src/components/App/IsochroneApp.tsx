@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense, useMemo, useRef } from 'react';
 import { track, JourneyAnalytics, getJourneyContext } from '@/lib/analytics';
 import type { CityLandmark, TravelProfile, IsochroneFeature } from '@/types';
-import { defaultTimeRanges } from '@/data/isochrone-config';
+import { defaultTimeRanges, getColorForRange } from '@/data/isochrone-config';
 import { getLandmarkById } from '@/data/landmarks';
 import { MapWrapper, MapLegend } from '@/components/Map';
 import { 
@@ -24,7 +24,7 @@ import {
   POIByLayer,
   CoverageStatus,
 } from '@/lib/poi-utils';
-import { calculateMapPadding } from '@/lib/layout-utils';
+import { calculateMapPadding, resolvePOIListOpen, type POIListPreference } from '@/lib/layout-utils';
 import { createSharePayload } from '@/lib/share-utils';
 import { ShareVisitInitializer, resolveSharedPOI } from '@/lib/share-params';
 import type { SharePayload, POIWithLayer } from '@/types';
@@ -64,6 +64,7 @@ function IsochroneAppContent() {
   // 4. 首次访问引导状态与定位反馈（统一单一定位生命周期）
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationFocus, setLocationFocus] = useState<CityLandmark | null>(null);
   const [locatingError, setLocatingError] = useState<string | null>(null);
   const geoManagerRef = useRef<GeolocationLifecycleManager>(new GeolocationLifecycleManager());
 
@@ -81,7 +82,7 @@ function IsochroneAppContent() {
   const [shareInitialTarget, setShareInitialTarget] = useState<'whole' | 'poi'>('whole');
 
   // 7. 清单折叠/展开状态（折叠再展开不丢失结果）
-  const [isListOpen, setIsListOpen] = useState(true);
+  const [listPreference, setListPreference] = useState<POIListPreference | null>(null);
 
   // 7. 地图容器真实尺寸监听（按实际挂载 DOM 计算 padding，杜绝仅用 window 尺寸的偏差）
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -192,6 +193,9 @@ function IsochroneAppContent() {
   const coverageStatus: CoverageStatus = poiQueryResult?.status || 'uncovered';
   const isPartial: boolean = Boolean(poiQueryResult?.isPartial);
   const totalPOIs: number = poiQueryResult?.allPOIs.length ?? 0;
+  const resultId = committed?.analysisRunId ?? committed?.timestamp ?? null;
+  const isListOpen = resolvePOIListOpen({ resultId, matchedCount: totalPOIs, dataError: poiQueryError, preference: listPreference });
+  const handleToggleList = (open: boolean) => setListPreference({ resultId, open });
 
   // 查找当前选中的 POI 实体（若新结果集不包含已选 id，自动过滤为 null，保证草稿与结果更新时旧 id 失效）
   const selectedPOI = useMemo(() => {
@@ -260,10 +264,10 @@ function IsochroneAppContent() {
       containerWidth: containerSize.width,
       containerHeight: containerSize.height,
       isMobile: containerSize.isMobile,
-      isListOpen,
+      isListOpen: isListOpen || (Boolean(locationFocus) && isPanelOpen),
       isEditPanelOpen: isPanelOpen,
     });
-  }, [containerSize, isListOpen, isPanelOpen]);
+  }, [containerSize, isListOpen, isPanelOpen, locationFocus]);
 
   // 分享接收端仅恢复当前条件，避免后台批量请求干扰限流与手动重试。
   useEffect(() => {
@@ -282,6 +286,7 @@ function IsochroneAppContent() {
   const cancelGeolocation = useCallback(() => {
     geoManagerRef.current.cancel();
     setIsLocating(false);
+    setLocationFocus(null);
   }, []);
 
   // 显式选择地标（预设或外部选择）立即取消在途定位
@@ -430,6 +435,7 @@ function IsochroneAppContent() {
 
     // 成功且返回有效 features：原子更新 committed 结果快照
     if (result.success && result.features.length > 0) {
+      setLocationFocus(null);
       setCommitted({
         conditions: {
           landmark: currentLandmark,
@@ -459,7 +465,7 @@ function IsochroneAppContent() {
         });
       }
 
-      // 生成成功后折叠面板，进入结果模式，并重置选中状态与展开列表
+      // 生成成功后折叠面板，进入结果模式，并重置选中状态；清单按新结果的地点数自动展开或折叠
       let restoredPOIId: string | null = null;
       let warning: string | null = null;
       if (isShare && overrideConditions?.selectedPOIId) {
@@ -479,7 +485,6 @@ function IsochroneAppContent() {
       }
       setSharePOIWarning(warning);
       setSelectedPOIId(restoredPOIId);
-      setIsListOpen(true);
       setIsPanelOpen(isShare && (Boolean(warning) || shareParams.warnings.length > 0));
     }
     // 失败或空响应：fetchIsochrones 已记录错误/空状态，旧 committed 结果被完整保留
@@ -631,6 +636,8 @@ function IsochroneAppContent() {
           };
 
           setDraftLandmark(currentLocation);
+          setLocationFocus(currentLocation);
+          setSelectedPOIId(null);
 
           if (shouldAutoGenerate) {
             setIsWelcomeOpen(false);
@@ -684,12 +691,13 @@ function IsochroneAppContent() {
           candidateCoordinates={candidateCoordinates}
           mapPadding={mapPadding}
           committedTimestamp={committed?.timestamp}
+          locationFocus={locationFocus}
         />
       </div>
 
       {/* 显式选点模式确认栏 */}
       {isPickingLocation && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-3 border border-emerald-500/20 flex items-center gap-3 animate-fade-in max-w-[90vw]">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-3 border border-blue-500/20 flex items-center gap-3 animate-fade-in max-w-[90vw]">
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
             <div className="text-xs sm:text-sm font-medium text-gray-800 truncate">
@@ -710,7 +718,7 @@ function IsochroneAppContent() {
               type="button"
               onClick={handleConfirmCandidate}
               disabled={!candidateCoordinates}
-              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white shadow-md transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white shadow-md transition-colors"
             >
               确认出发点
             </button>
@@ -737,7 +745,7 @@ function IsochroneAppContent() {
           onSelectPOI={handleSelectPOI}
           rangeMinutes={displayRangeMinutes}
           isOpen={isListOpen}
-          onToggleOpen={setIsListOpen}
+          onToggleOpen={handleToggleList}
           onEdit={() => setIsPanelOpen(true)}
           onViewExample={handleViewExample}
           onRetry={handleRetryPOIQuery}
@@ -769,8 +777,8 @@ function IsochroneAppContent() {
 
       {/* 顶部标题 */}
       <div className="absolute top-4 left-4 z-10 pointer-events-none transition-opacity duration-300">
-        <h1 className="text-2xl font-bold text-gray-800 drop-shadow-sm flex items-center gap-2">
-          <span className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white shadow-emerald-500/30 shadow-lg">
+        <h1 className="text-2xl font-bold text-gray-950 drop-shadow-sm flex items-center gap-2">
+          <span className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center text-white shadow-orange-600/20 shadow-lg">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
@@ -790,7 +798,7 @@ function IsochroneAppContent() {
           }
         `}
       >
-        <div className="bg-white/95 backdrop-blur-md shadow-xl border border-white/20 p-5 overflow-y-auto w-full rounded-t-2xl max-h-[85vh] md:rounded-2xl md:max-h-[calc(100vh-2rem)]">
+        <div className={`bg-white/95 backdrop-blur-md shadow-xl border border-white/20 p-5 overflow-y-auto w-full rounded-t-2xl ${locationFocus ? 'max-h-[48vh]' : 'max-h-[85vh]'} md:rounded-2xl md:max-h-[calc(100vh-2rem)]`}>
           {/* 移动端与已有结果时的收起按钮 */}
           <button
             type="button"
@@ -820,7 +828,7 @@ function IsochroneAppContent() {
                   {isShareView && (error || isEmpty) && <p>分享条件已保留，请手动重试，或选择其他起点。</p>}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <button type="button" disabled={isLocating || loading} onClick={() => requestGeolocation({ autoGenerate: true, source: 'share_recipient' })} className="font-semibold text-emerald-700 underline disabled:opacity-50">
+                  <button type="button" disabled={isLocating || loading} onClick={() => requestGeolocation({ autoGenerate: true, source: 'share_recipient' })} className="font-semibold text-blue-700 underline disabled:opacity-50">
                     {isLocating ? '正在定位…' : '探索我的附近'}
                   </button>
                   {shareParams.landmark && !shareParams.error && (
@@ -828,7 +836,7 @@ function IsochroneAppContent() {
                       {isShareView ? '重新加载分享' : '返回原分享'}
                     </button>
                   )}
-                  <button type="button" onClick={handleStartPicking} className="text-emerald-700 underline">手动选择起点</button>
+                  <button type="button" onClick={handleStartPicking} className="text-blue-700 underline">手动选择起点</button>
                 </div>
               </section>
             )}
@@ -838,7 +846,7 @@ function IsochroneAppContent() {
               <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 text-xs animate-fade-in">
                 <div className="flex items-center justify-between text-slate-500 mb-1">
                   <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     当前地图展示的结果
@@ -855,9 +863,15 @@ function IsochroneAppContent() {
                 <div className="text-slate-500 text-[11px] mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5">
                   <span>方式: {committed.conditions.profile === 'driving-car' ? '驾车' : committed.conditions.profile === 'cycling-regular' ? '骑行' : '步行'}</span>
                   <span>范围: 15 / 30 / 60 分钟</span>
-                  <span className="text-emerald-700 font-medium">地点: {totalPOIs} 处已收录</span>
+                  <span className="text-blue-700 font-medium">地点: {totalPOIs} 处已收录</span>
                 </div>
               </div>
+            )}
+
+            {locationFocus && (
+              <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                已定位到当前位置，地图已移动。{loading ? '正在生成这里的可达范围…' : '点击下方按钮生成这里的可达范围。'}
+              </p>
             )}
 
             {/* 条件已修改提示栏 */}
@@ -885,14 +899,14 @@ function IsochroneAppContent() {
                   <button
                     type="button"
                     onClick={handleViewExample}
-                    className="text-[11px] font-medium text-gray-500 hover:text-emerald-700 underline cursor-pointer"
+                    className="text-[11px] font-medium text-gray-500 hover:text-blue-700 underline cursor-pointer"
                   >
                     看上海示例
                   </button>
                   <button
                     type="button"
                     onClick={handleStartPicking}
-                    className="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -931,18 +945,18 @@ function IsochroneAppContent() {
             <section className="bg-gray-50/80 border border-gray-200/70 rounded-xl p-3 text-xs">
               <div className="flex items-center justify-between text-gray-700 font-semibold mb-1.5">
                 <span>可达时间范围</span>
-                <span className="text-[10px] text-emerald-700 font-normal">固定三档 · 1小时内</span>
+                <span className="text-[10px] text-blue-700 font-normal">固定三档 · 1小时内</span>
               </div>
               <div className="grid grid-cols-3 gap-1.5 text-center">
-                <div className="py-1 px-1 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-800 font-medium text-[11px]">
-                  15 分钟
-                </div>
-                <div className="py-1 px-1 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-800 font-medium text-[11px]">
-                  30 分钟
-                </div>
-                <div className="py-1 px-1 rounded-lg bg-rose-50 border border-rose-200/80 text-rose-800 font-medium text-[11px]">
-                  60 分钟 (1h)
-                </div>
+                {defaultTimeRanges.map(minutes => {
+                  const colors = getColorForRange(minutes);
+                  return (
+                    <div key={minutes} className="py-1 px-1 rounded-lg border font-medium text-[11px]"
+                      style={{ color: colors.color, borderColor: colors.color, backgroundColor: `${colors.fillColor}30` }}>
+                      {minutes} 分钟
+                    </div>
+                  );
+                })}
               </div>
               <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">
                 可达范围采用道路网络实估，经 500 米网格对齐并应用折扣系数（驾车 80%、骑行 70%、步行 60%），供出行参考。
@@ -1026,7 +1040,7 @@ function IsochroneAppContent() {
             <section>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs text-gray-500">
-                  自定义选点配额: <span className={remaining > 0 ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>{remaining} 次/日</span>
+                  自定义选点配额: <span className={remaining > 0 ? "text-blue-600 font-bold" : "text-red-500 font-bold"}>{remaining} 次/日</span>
                 </span>
                 <span className="text-[10px] text-gray-400">预设与定位免配额</span>
               </div>
@@ -1038,7 +1052,7 @@ function IsochroneAppContent() {
                           transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.98] cursor-pointer
                           ${loading || (remaining <= 0 && isCustomLandmark(draftLandmark) && !getCachedIsochrones(draftLandmark?.coordinates || [0, 0], draftProfile, draftRangeMinutes))
                             ? 'bg-gray-400 cursor-not-allowed hover:scale-100'
-                            : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
+                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
                           }`}
               >
                 {loading ? '计算可达范围中...' : (hasPendingChanges ? '更新可达范围' : '查看可达范围')}
@@ -1060,7 +1074,7 @@ function IsochroneAppContent() {
             {/* 底部信息 */}
             <div className="text-[10px] text-gray-400 text-center flex justify-between items-center pt-2">
               <span>数据: OpenRouteService</span>
-              <a href="https://kuhung.me/about" className="hover:text-emerald-500">kuhung</a>
+              <a href="https://kuhung.me/about" className="hover:text-blue-500">kuhung</a>
             </div>
           </div>
         </div>
@@ -1117,7 +1131,7 @@ export default function IsochroneApp() {
   return (
     <Suspense fallback={
       <div className="h-screen w-full flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     }>
       <IsochroneAppContent />
