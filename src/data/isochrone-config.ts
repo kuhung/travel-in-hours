@@ -3,22 +3,57 @@ import type { IsochroneRange, TravelProfile } from '../types/index.ts';
 // 等时圈时间范围配置 (分钟) - 固定3档：15分钟、30分钟、1小时
 export const defaultTimeRanges = [15, 30, 60];
 
-// 视觉参考：白底深色标题，蓝色主操作，橙色强调与核心圈。
+// 视觉主题与调色板规范 (Refactoring UI & Baseline UI 契约)
 export const VISUAL_THEME = {
-  primary: '#2563eb',
-  primaryDark: '#1d4ed8',
-  accent: '#ff4b23',
-  accentInk: '#c2410c',
-  ink: '#111827',
-  surface: '#ffffff',
+  // 主色 (Primary) - 科技天蓝，用于 30 分钟主圈、核心品牌与主要按钮
+  primary: '#2563eb',       // Blue 600
+  primaryDark: '#1d4ed8',   // Blue 700
+  primaryLight: '#3b82f6',  // Blue 500
+  primarySubtle: '#93c5fd', // Blue 300
+  primaryBg: '#eff6ff',     // Blue 50
+
+  // 强调色 (Accent) - 活力珊瑚橙，用于 15 分钟核心圈、焦点数值强调（如“30”分钟）、关键亮点
+  accent: '#ff4b23',        // Coral Orange 500
+  accentDark: '#e03a14',    // Coral Orange 600
+  accentInk: '#ff4b23',     // Coral 600
+  accentLight: '#ff5722',   // Coral 400
+  accentBg: '#fff7ed',      // Orange 50
+
+  // 外延色 (Subtle Extended) - 清新冰蓝，用于 60 分钟外延辐射圈
+  extended: '#60a5fa',      // Blue 400
+  extendedLight: '#93c5fd', // Blue 300
+  extendedBg: '#f0f9ff',    // Sky 50
+
+  // 中性灰阶 (Neutrals) - 文本与层级
+  ink: '#111827',           // Gray 900 - 核心大标题、黑色极简图钉
+  inkSecondary: '#334155',  // Slate 700 - 正文、次级标题
+  muted: '#64748b',         // Slate 500 - 副标题、说明文案
+  subtle: '#94a3b8',        // Slate 400 - 辅助标注、签名
+  border: '#e2e8f0',        // Slate 200 - 统一边框
+  surface: '#ffffff',       // 纯白表面
+  surfaceMuted: '#f8fafc',  // Slate 50 - 底色与淡色卡片
 } as const;
 
-// 15 分钟橙色核心圈，30 分钟蓝色，60 分钟浅蓝；线型辅助区分两层蓝色。
+// 圈层层级色彩（单一事实源）：15m 活力珊瑚橙，30m 科技天蓝，60m 清新冰蓝
+// 遵循图2规范：全部采用精细实线，剔除锯齿毛刺虚线（dashArray），保证边缘光滑细腻
 export const isochroneColors: IsochroneRange[] = [
-  { minutes: 15, color: VISUAL_THEME.accentInk, fillColor: '#ff673f', opacity: 0.5 },
-  { minutes: 30, color: VISUAL_THEME.primaryDark, fillColor: '#3b82f6', opacity: 0.3 },
-  { minutes: 60, color: VISUAL_THEME.primary, fillColor: '#93c5fd', opacity: 0.16 },
+  { minutes: 15, color: '#ff4b23', fillColor: '#ff5722', opacity: 0.30 },
+  { minutes: 30, color: '#2563eb', fillColor: '#3b82f6', opacity: 0.22 },
+  { minutes: 60, color: '#60a5fa', fillColor: '#93c5fd', opacity: 0.12 },
 ];
+
+// 圈层徽章标签配置（图2同款胶囊标签）
+export const TIER_BADGE_CONFIG: Record<number, { text: string; bg: string; color: string; border: string }> = {
+  15: { text: '15 分钟', bg: '#ff4b23', color: '#ffffff', border: 'rgba(255,255,255,0.85)' },
+  30: { text: '30 分钟', bg: '#2563eb', color: '#ffffff', border: 'rgba(255,255,255,0.85)' },
+  60: { text: '60 分钟', bg: '#3b82f6', color: '#ffffff', border: 'rgba(255,255,255,0.85)' },
+};
+
+// 极简黑色图钉（图2同款 Origin Pin）
+export const MINIMAL_ORIGIN_PIN_SVG = `<svg viewBox="0 0 28 38" width="28" height="38" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14 0C6.268 0 0 6.268 0 14C0 24.5 14 38 14 38C14 38 28 24.5 28 14C28 6.268 21.732 0 14 0Z" fill="#0f172a"/>
+  <circle cx="14" cy="14" r="5" fill="#ffffff"/>
+</svg>`;
 
 // 选中目的地采用深色标记，与彩色圈层区分。
 export const DESTINATION_STYLE = {
@@ -38,7 +73,7 @@ export interface IsochroneStyle {
   fillColor: string;
   opacity: number;        // 面填充透明度 (fillOpacity)
   weight: number;         // 边界描边线宽
-  dashArray?: string;     // 实线 / 长虚线 / 短虚线，辅助区分圈层
+  dashArray?: string;     // 实线 / 长虚线 / 短虚线
   strokeOpacity: number;  // 边界描边透明度
 }
 
@@ -48,17 +83,18 @@ export const getColorForRange = (minutes: number): IsochroneRange => {
   return config || isochroneColors[0];
 };
 
-// 获取圈层完整样式 helper（地图与离屏导出统一规范）
+// 获取圈层完整样式 helper（地图与离屏导出统一规范：实线微线宽，极致平滑）
 export const getIsochroneStyle = (minutes: number): IsochroneStyle => {
   const config = getColorForRange(minutes);
+  const weight = config.minutes === 15 ? 2 : config.minutes === 30 ? 1.8 : 1.5;
   return {
     minutes: config.minutes,
     color: config.color,
     fillColor: config.fillColor,
     opacity: config.opacity,
-    weight: 3,
-    strokeOpacity: 1,
-    dashArray: config.minutes === 30 ? '10 6' : config.minutes === 60 ? '3 6' : undefined,
+    weight,
+    strokeOpacity: 0.95,
+    dashArray: undefined,
   };
 };
 

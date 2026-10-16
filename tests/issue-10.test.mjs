@@ -549,12 +549,12 @@ test('9. 样式单一来源与契约验证 (isochrone-config.ts 单一配置源�
   // 三档色相与线型区分；地图和导出共用同一配置。
   assert.strictEqual(isochroneColors.length, 3);
   const [style15, style30, style60] = [15, 30, 60].map(getColorForRange);
-  assert.deepEqual([style15.color, style30.color, style60.color], ['#c2410c', '#1d4ed8', '#2563eb']);
+  assert.deepEqual([style15.color, style30.color, style60.color], ['#ff4b23', '#2563eb', '#60a5fa']);
   assert.ok(style15.opacity > style30.opacity);
   assert.ok(style30.opacity > style60.opacity);
   const fullStyles = [15, 30, 60].map(getIsochroneStyle);
-  assert.deepEqual(fullStyles.map(s => s.dashArray), [undefined, '10 6', '3 6']);
-  assert.ok(fullStyles.every(s => s.weight === 3 && s.strokeOpacity === 1));
+  assert.deepEqual(fullStyles.map(s => s.dashArray), [undefined, undefined, undefined]);
+  assert.ok(fullStyles.every(s => s.strokeOpacity === 0.95));
 
   // 12.4 LAYER_COLOR_MAP 必须与单一事实源动态对齐
   assert.strictEqual(LAYER_COLOR_MAP[15]?.color, style15.color);

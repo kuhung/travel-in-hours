@@ -41,6 +41,12 @@ body {
   background: #f8fafc;
 }
 
+/* 纯净极简底图滤镜：弱化高德刺眼的橙黄公路与标牌饱和度，提亮浅灰底色，使整体呈现如远山白一般的雅致高级质感 */
+.leaflet-tile-pane {
+  filter: grayscale(40%) brightness(104%) contrast(92%);
+  opacity: 0.92;
+}
+
 .leaflet-popup-content-wrapper {
   background: #ffffff;
   color: #1f2937;

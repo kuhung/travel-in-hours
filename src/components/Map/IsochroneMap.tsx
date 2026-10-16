@@ -19,6 +19,8 @@ import {
   sortIsochronesForRender,
   DESTINATION_STYLE,
   VISUAL_THEME,
+  TIER_BADGE_CONFIG,
+  MINIMAL_ORIGIN_PIN_SVG,
 } from '@/data/isochrone-config';
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/lib/coord-transform';
 import { POIWithLayer, formatExclusiveTierTime } from '@/lib/poi-utils';
@@ -235,6 +237,102 @@ export default function IsochroneMap({
     });
   }, []);
 
+  // 计算等时圈胶囊标签最佳锚点（位于多边形东北侧外沿，契合图2视觉导向）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getIsochroneBadgePosition = useCallback((geometry: any): [number, number] | null => {
+    if (!geometry) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let rings: any[] = [];
+    if (geometry.type === 'Polygon') {
+      rings = geometry.coordinates;
+    } else if (geometry.type === 'MultiPolygon') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rings = geometry.coordinates.map((poly: any) => poly[0]);
+    }
+    if (!rings || rings.length === 0) return null;
+
+    let bestPoint: [number, number] | null = null;
+    let maxScore = -Infinity;
+
+    for (const ring of rings) {
+      if (!Array.isArray(ring)) continue;
+      for (const pt of ring) {
+        if (Array.isArray(pt) && pt.length >= 2 && typeof pt[0] === 'number' && typeof pt[1] === 'number') {
+          const lng = pt[0];
+          const lat = pt[1];
+          // 寻找右上角外沿点：东北偏上方向得分
+          const score = lat * 1.35 + lng;
+          if (score > maxScore) {
+            maxScore = score;
+            bestPoint = [lat, lng];
+          }
+        }
+      }
+    }
+
+    return bestPoint;
+  }, []);
+
+  // 创建等时圈胶囊标签图标（图2同款）
+  const createBadgeIcon = useCallback((minutes: number) => {
+    const cfg = TIER_BADGE_CONFIG[minutes] || {
+      text: `${minutes} 分钟`,
+      bg: VISUAL_THEME.primary,
+      color: '#ffffff',
+      border: 'rgba(255,255,255,0.85)',
+    };
+
+    return L.divIcon({
+      className: 'isochrone-tier-pill',
+      html: `
+        <div style="
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 3px 8px;
+          background-color: ${cfg.bg};
+          color: ${cfg.color};
+          font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 11px;
+          font-weight: 700;
+          line-height: 1;
+          letter-spacing: 0.02em;
+          border-radius: 6px;
+          border: 1.5px solid ${cfg.border};
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+          pointer-events: none;
+          white-space: nowrap;
+          user-select: none;
+          transform: translate(-50%, -50%);
+        ">
+          ${cfg.text}
+        </div>
+      `,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    });
+  }, []);
+
+  // 创建极简黑色图钉（图2同款 Origin Pin）
+  const createOriginIcon = useCallback(() => {
+    return L.divIcon({
+      className: 'origin-minimal-marker',
+      html: `
+        <div style="
+          width: 28px;
+          height: 38px;
+          filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.35));
+          cursor: pointer;
+        ">
+          ${MINIMAL_ORIGIN_PIN_SVG}
+        </div>
+      `,
+      iconSize: [28, 38],
+      iconAnchor: [14, 38],
+      popupAnchor: [0, -38],
+    });
+  }, []);
+
   // 创建选点候选标记图标
   const createCandidateIcon = useCallback(() => {
     const size = 38;
@@ -282,9 +380,10 @@ export default function IsochroneMap({
     >
       <ZoomControl position="bottomleft" />
 
+      {/* 高德地图淡雅简约底图 (style=8)：干净灰白配色，消除粗暴黄橙公路牌与杂乱标注 */}
       <TileLayer
         attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'
-        url="https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}"
+        url="https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
         crossOrigin="anonymous"
       />
       
@@ -311,6 +410,21 @@ export default function IsochroneMap({
           onEachFeature={onEachFeature}
         />
       ))}
+
+      {/* 渲染等时圈胶囊微型徽章 (图2同款，清晰指示 15/30/60 分钟范围) */}
+      {sortedIsochrones.map((feature, index) => {
+        const minutes = Math.round(feature.properties.value / 60);
+        const badgePos = getIsochroneBadgePosition(feature.geometry);
+        if (!badgePos) return null;
+        return (
+          <Marker
+            key={`isochrone-badge-${minutes}-${index}`}
+            position={badgePos}
+            icon={createBadgeIcon(minutes)}
+            interactive={false}
+          />
+        );
+      })}
       
       {locationPosition && (
         <CircleMarker center={locationPosition} radius={10} pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#1d4ed8', fillOpacity: 1 }}>
@@ -318,9 +432,9 @@ export default function IsochroneMap({
         </CircleMarker>
       )}
 
-      {/* 地标标记（已提交或当前选中的起点） */}
+      {/* 地标标记（已提交或当前选中的起点）- 采用图2极简黑色图钉 */}
       {landmark && markerPosition && (
-        <Marker position={markerPosition}>
+        <Marker position={markerPosition} icon={createOriginIcon()}>
           <Popup>
             <div className="p-1">
               <div className="font-bold text-lg text-gray-800">{landmark.name}</div>

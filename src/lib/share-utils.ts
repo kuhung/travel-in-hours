@@ -26,6 +26,8 @@ import {
   sortIsochronesForRender,
   DESTINATION_STYLE,
   VISUAL_THEME,
+  TIER_BADGE_CONFIG,
+  MINIMAL_ORIGIN_PIN_SVG,
 } from '../data/isochrone-config.ts';
 
 // ============ 类型定义 ============
@@ -658,6 +660,16 @@ export async function renderIsolatedMapSnapshot(
   container.style.pointerEvents = 'none';
   document.body.appendChild(container);
 
+  // 注入雅致滤镜，使离屏海报切片同样呈现图2远山白质感
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    #${container.id} .leaflet-tile-pane {
+      filter: grayscale(40%) brightness(104%) contrast(92%);
+      opacity: 0.92;
+    }
+  `;
+  container.appendChild(styleEl);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mapInstance: any = null;
   let tileTracker: TileLoadTracker | null = null;
@@ -676,9 +688,9 @@ export async function renderIsolatedMapSnapshot(
       zoomAnimation: false,
     });
 
-    // 1. 高德瓦片图层 (crossOrigin="anonymous" 避免画布污染)
+    // 1. 高德瓦片图层 (style=8 淡雅简约底图，crossOrigin="anonymous" 避免画布污染)
     const tileLayer = L.tileLayer(
-      'https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
+      'https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
       {
         crossOrigin: 'anonymous',
         maxZoom: 18,
@@ -723,18 +735,86 @@ export async function renderIsolatedMapSnapshot(
       }).addTo(mapInstance);
     });
 
-    // 3. 绘制起点 Marker
+    // 2.1 绘制等时圈胶囊微型徽章 (15/30/60 分钟图2同款)
+    sortedFeatures.forEach((feature) => {
+      const minutes = Math.round(feature.properties.value / 60);
+      const cfg = TIER_BADGE_CONFIG[minutes];
+      if (!cfg) return;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let rings: any[] = [];
+      if (feature.geometry.type === 'Polygon') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        rings = (feature.geometry as any).coordinates;
+      } else if (feature.geometry.type === 'MultiPolygon') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        rings = (feature.geometry as any).coordinates.map((p: any) => p[0]);
+      }
+      let bestPoint: [number, number] | null = null;
+      let maxScore = -Infinity;
+      for (const ring of rings) {
+        if (!Array.isArray(ring)) continue;
+        for (const pt of ring) {
+          if (Array.isArray(pt) && pt.length >= 2 && typeof pt[0] === 'number' && typeof pt[1] === 'number') {
+            const score = pt[1] * 1.35 + pt[0];
+            if (score > maxScore) {
+              maxScore = score;
+              bestPoint = [pt[1], pt[0]];
+            }
+          }
+        }
+      }
+
+      if (bestPoint) {
+        const badgeIcon = L.divIcon({
+          className: 'isolated-tier-pill',
+          html: `
+            <div style="
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 3px 8px;
+              background-color: ${cfg.bg};
+              color: ${cfg.color};
+              font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+              font-size: 11px;
+              font-weight: 700;
+              line-height: 1;
+              letter-spacing: 0.02em;
+              border-radius: 6px;
+              border: 1.5px solid ${cfg.border};
+              box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+              white-space: nowrap;
+              user-select: none;
+              transform: translate(-50%, -50%);
+            ">
+              ${cfg.text}
+            </div>
+          `,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
+        });
+        L.marker(bestPoint, { icon: badgeIcon }).addTo(mapInstance);
+      }
+    });
+
+    // 3. 绘制起点 Marker（图2同款极简黑色图钉）
     const originCoords = payload.conditions.landmark.coordinates;
     const [origGcjLng, origGcjLat] = wgs84ToGcj02(originCoords[0], originCoords[1]);
     const originIcon = L.divIcon({
       className: 'isolated-origin-marker',
       html: `
-        <div style="width: 24px; height: 24px; border-radius: 50%; background: ${VISUAL_THEME.accentInk}; border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
-          <div style="width: 6px; height: 6px; border-radius: 50%; background: #ffffff;"></div>
+        <div style="
+          width: 28px;
+          height: 38px;
+          filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.35));
+          transform: translate(-14px, -38px);
+        ">
+          ${MINIMAL_ORIGIN_PIN_SVG}
         </div>
       `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      iconSize: [28, 38],
+      iconAnchor: [14, 38],
     });
     L.marker([origGcjLat, origGcjLng], { icon: originIcon }).addTo(mapInstance);
 
@@ -775,6 +855,7 @@ export async function renderIsolatedMapSnapshot(
     }
 
     // 5. 视角包络适配 (Union: 起点 + 等时圈几何 + 所选目的地或所有地点)
+    // 增加左上方留白，为海报大标题与引语留出纯净空间
     const bounds = L.latLngBounds([origGcjLat, origGcjLng], [origGcjLat, origGcjLng]);
     transformedFeatures.forEach((feature) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -797,7 +878,11 @@ export async function renderIsolatedMapSnapshot(
       });
     }
 
-    mapInstance.fitBounds(bounds, { padding: [36, 36], animate: false });
+    mapInstance.fitBounds(bounds, {
+      paddingTopLeft: [70, 260],
+      paddingBottomRight: [70, 70],
+      animate: false,
+    });
 
     // 6. 瓦片等待：若所有瓦片均失败或超时且 0 瓦片加载，明确拒绝
     if (options.signal?.aborted) throw new Error('Generation aborted');
@@ -912,16 +997,14 @@ export async function exportShareImage(
       throw new Error(callerSignal?.aborted ? 'Generation aborted' : 'Image export overall timeout');
     }
 
-    // 1. 离屏渲染地图快照 (宽度统一 960，高度默认 600)
+    // 1. 离屏渲染地图快照 (采用 960x720 黄金比例一体化海报画幅，与图2完全一致)
     const mapWidth = 960;
+    const totalHeight = 720;
     const isDestination = Boolean(payload.selectedPOI);
-    const footerHeight = 130;
-    const headerHeight = isDestination ? 120 : 0;
-    const mapHeight = 600;
 
     const mapCanvas = await renderSnapshot(payload, {
       width: mapWidth,
-      height: mapHeight,
+      height: totalHeight,
       signal: internalSignal,
     });
 
@@ -931,7 +1014,7 @@ export async function exportShareImage(
 
     // 2. 高清二维码生成 (最大 320px)
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    const qrDisplaySize = 84;
+    const qrDisplaySize = 76;
     const qrGenerateSize = Math.min(qrDisplaySize * dpr * 2, 320);
     const shareUrl = generateShareUrl(payload);
 
@@ -974,7 +1057,6 @@ export async function exportShareImage(
     }
 
     // 3. 组合最终高 DPI 画布 (限制最大单边 4096，防止移动端内存溢出)
-    const totalHeight = headerHeight + mapHeight + footerHeight;
     const finalCanvas = document.createElement('canvas');
     const ctx = finalCanvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context not available');
@@ -995,24 +1077,14 @@ export async function exportShareImage(
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, mapWidth, totalHeight);
 
-    // 4.1 若为所选地点卡：绘制顶部目的地与起点关系
-    if (isDestination && payload.selectedPOI) {
-      drawDestinationHeader(ctx, payload, mapWidth, headerHeight);
-    }
+    // 4.1 绘制全景地图底图快照
+    ctx.drawImage(mapCanvas, 0, 0, mapWidth, totalHeight);
 
-    // 4.2 绘制地图快照
-    ctx.drawImage(mapCanvas, 0, headerHeight, mapWidth, mapHeight);
+    // 4.2 绘制左上角海报大标题组与柔和微渐变遮罩 (图2同款：出行可达地图 / 30分钟，能到哪？)
+    drawPosterHeader(ctx, payload, mapWidth, totalHeight);
 
-    // 4.3 若为整次探索卡：绘制左侧 POI 圈层清单
-    if (!isDestination) {
-      drawPOIPanel(ctx, payload, mapWidth, mapHeight, headerHeight);
-    }
-
-    // 4.4 绘制右下角等时圈图例与估算声明
-    drawLegendAndAttribution(ctx, payload, mapWidth, mapHeight, headerHeight);
-
-    // 4.5 绘制底部 Footer 与交互二维码
-    drawShareFooter(ctx, payload, qrImage, mapWidth, totalHeight, footerHeight, qrDisplaySize);
+    // 4.3 绘制左下角品牌签名与右下角轻量二维码卡片 (图2同款：谷粒·KUHUNG / kuhung.me)
+    drawPosterFooterAndQR(ctx, payload, qrImage, mapWidth, totalHeight, qrDisplaySize);
 
     if (internalSignal.aborted) {
       throw new Error(callerSignal?.aborted ? 'Generation aborted' : 'Image export overall timeout');
@@ -1062,370 +1134,148 @@ export async function exportShareImage(
 
 // ============ 绘制辅助细节 ============
 
-function drawDestinationHeader(
+function drawPosterHeader(
   ctx: CanvasRenderingContext2D,
   payload: SharePayload,
   width: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   height: number
 ) {
-  const poi = payload.selectedPOI;
-  if (!poi) return;
+  const landmark = payload.conditions.landmark;
+  const isDestination = Boolean(payload.selectedPOI);
+  const selectedPOI = payload.selectedPOI;
 
-  const modeText = payload.conditions.profile === 'driving-car' ? '驾车' : payload.conditions.profile === 'cycling-regular' ? '骑行' : '步行';
-  const tierText = formatExclusiveTierTime(poi.layerMinutes, payload.conditions.rangeMinutes);
+  // 1. 左上方柔和白光渐变微遮罩，确保文字无论在任何地图底图上都保持超高对比度与通透感
+  const maskW = Math.min(540, width * 0.6);
+  const maskH = 260;
+  const gradient = ctx.createLinearGradient(0, 0, maskW, 0);
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+  gradient.addColorStop(0.55, 'rgba(255, 255, 255, 0.75)');
+  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
-  // 背景
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, '#f8fafc');
-  gradient.addColorStop(1, '#f1f5f9');
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, maskW, maskH);
 
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, height);
-  ctx.lineTo(width, height);
-  ctx.stroke();
+  const startX = 40;
+  let curY = 44;
 
-  // 标签（采用深色 DESTINATION_STYLE，与圈层区分）
-  const paddingX = 28;
-  let currentY = 28;
-
-  ctx.fillStyle = DESTINATION_STYLE.badgeBg;
-  ctx.beginPath();
-  ensureRoundRect(ctx, paddingX, currentY - 2, 72, 22, 6);
-  ctx.fill();
-
-  ctx.fillStyle = DESTINATION_STYLE.badgeText;
-  ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('所选目的地', paddingX + 36, currentY + 9);
-
-  // 目的地名称
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-
-  let displayName = poi.name;
-  if (ctx.measureText(displayName).width > width - 260) {
-    while (ctx.measureText(displayName + '...').width > width - 260 && displayName.length > 0) {
-      displayName = displayName.slice(0, -1);
-    }
-    displayName += '...';
-  }
-  ctx.fillText(displayName, paddingX + 82, currentY + 9);
-
-  currentY += 34;
-
-  // 起点与估算出行时间关系
-  ctx.fillStyle = '#334155';
-  ctx.font = '500 14px system-ui, -apple-system, sans-serif';
-  ctx.fillText(
-    `从「${payload.conditions.landmark.name}」出发 · ${modeText} · ${tierText}预估可达`,
-    paddingX,
-    currentY + 6
-  );
-
-  currentY += 26;
-
-  // 描述或本地推荐说明
-  ctx.fillStyle = '#64748b';
-  ctx.font = '400 12px system-ui, -apple-system, sans-serif';
-  const desc = poi.description ? `简介：${poi.description}` : '预估时间基于 500m 网格对齐计算，非单点精确导航';
-  let displayDesc = desc;
-  if (ctx.measureText(displayDesc).width > width - paddingX * 2) {
-    while (ctx.measureText(displayDesc + '...').width > width - paddingX * 2 && displayDesc.length > 0) {
-      displayDesc = displayDesc.slice(0, -1);
-    }
-    displayDesc += '...';
-  }
-  ctx.fillText(displayDesc, paddingX, currentY + 4);
-}
-
-function drawPOIPanel(
-  ctx: CanvasRenderingContext2D,
-  payload: SharePayload,
-  mapWidth: number,
-  mapHeight: number,
-  offsetY: number
-) {
-  const { poiInfo } = payload;
-  const listPanelWidth = 220;
-  const listPadding = 14;
-  const listX = 20;
-  const listY = offsetY + 20;
-  const maxListHeight = mapHeight - 40;
-
-  // 若无 POI 或未覆盖
-  if (poiInfo.totalPOIs === 0) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
-    ctx.beginPath();
-    ensureRoundRect(ctx, listX, listY, listPanelWidth, 76, 12);
-    ctx.fill();
-
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText('可达地点', listX + listPadding, listY + listPadding);
-
-    ctx.fillStyle = '#64748b';
-    ctx.font = '400 11px system-ui, -apple-system, sans-serif';
-    const explanation = poiInfo.coverageStatus === 'uncovered'
-      ? '超出当前收录范围（未收录非无设施）'
-      : '当前收录范围内未找到匹配地点';
-    ctx.fillText(explanation, listX + listPadding, listY + listPadding + 20);
-    return;
-  }
-
-  // 计算所需高度
-  let neededHeight = 48;
-  poiInfo.poiByLayer.forEach((layer) => {
-    neededHeight += 24 + layer.points.length * 20 + 8;
-  });
-  const actualHeight = Math.min(neededHeight, maxListHeight);
-
-  // 绘制背景面板
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.beginPath();
-  ensureRoundRect(ctx, listX, listY, listPanelWidth, actualHeight, 14);
-  ctx.fill();
-
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.9)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // 头部标题
-  let curY = listY + listPadding;
-  ctx.fillStyle = VISUAL_THEME.accentInk;
-  ctx.beginPath();
-  ensureRoundRect(ctx, listX + listPadding, curY, 3, 16, 1.5);
-  ctx.fill();
-
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+  // 2. 主标题：出行可达地图 (粗黑体，图2同款)
+  ctx.fillStyle = VISUAL_THEME.ink;
+  ctx.font = '900 44px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('可达热点', listX + listPadding + 8, curY);
+  ctx.fillText('出行可达地图', startX, curY);
 
-  ctx.fillStyle = '#64748b';
-  ctx.font = '400 11px system-ui, -apple-system, sans-serif';
-  ctx.fillText(`共 ${poiInfo.totalPOIs} 处`, listX + listPadding + 64, curY + 1);
+  curY += 58;
 
-  curY += 28;
+  // 3. 冲击力大字：30 分钟，能到哪？ (30 使用活力珊瑚橙强调)
+  if (isDestination && selectedPOI) {
+    const tierText = formatExclusiveTierTime(selectedPOI.layerMinutes, payload.conditions.rangeMinutes);
+    ctx.fillStyle = VISUAL_THEME.accent;
+    ctx.font = '900 38px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(tierText, startX, curY);
 
-  let hasOverflow = false;
+    const tierWidth = ctx.measureText(tierText).width;
+    ctx.fillStyle = VISUAL_THEME.ink;
+    ctx.fillText('，可达此地', startX + tierWidth, curY);
 
-  // 各圈层分组
-  for (const layer of poiInfo.poiByLayer) {
-    if (curY > listY + actualHeight - 34) {
-      hasOverflow = true;
-      break;
-    }
+    curY += 50;
+    ctx.fillStyle = VISUAL_THEME.inkSecondary;
+    ctx.font = '700 20px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(`📍 ${selectedPOI.name}`, startX, curY);
 
-    const tierTitle = formatExclusiveTierTime(layer.layerMinutes, payload.conditions.rangeMinutes);
-    ctx.fillStyle = layer.fillColor;
-    ctx.beginPath();
-    ensureRoundRect(ctx, listX + listPadding, curY, 80, 18, 9);
-    ctx.fill();
+    curY += 32;
+    ctx.fillStyle = VISUAL_THEME.muted;
+    ctx.font = '500 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(`从「${landmark.name}」出发 · 圈层互斥预估`, startX, curY);
+  } else {
+    // 整次探索：图2同款“30 分钟，能到哪？”
+    const minutesToHighlight = payload.conditions.rangeMinutes.includes(30) ? '30' : String(payload.conditions.rangeMinutes[0]);
+    ctx.fillStyle = VISUAL_THEME.accent;
+    ctx.font = '900 52px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(minutesToHighlight, startX, curY - 4);
 
-    ctx.strokeStyle = layer.color;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    const numWidth = ctx.measureText(minutesToHighlight).width;
+    ctx.fillStyle = VISUAL_THEME.ink;
+    ctx.font = '900 38px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(' 分钟，能到哪？', startX + numWidth, curY + 4);
 
-    ctx.fillStyle = layer.color;
-    ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(tierTitle, listX + listPadding + 40, curY + 9);
+    curY += 60;
+    // 副标题：用路网等时圈，看见真实生活圈 (图2同款)
+    ctx.fillStyle = VISUAL_THEME.muted;
+    ctx.font = '500 16px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('用路网等时圈，看见真实生活圈', startX, curY);
 
-    curY += 24;
-
-    for (const pt of layer.points) {
-      if (curY > listY + actualHeight - 24) {
-        hasOverflow = true;
-        break;
-      }
-
-      // 序号圆点
-      ctx.fillStyle = layer.color;
-      ctx.beginPath();
-      ctx.arc(listX + listPadding + 8, curY + 8, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 8px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(pt.index.toString(), listX + listPadding + 8, curY + 8);
-
-      // 名称截断
-      ctx.fillStyle = '#1e293b';
-      ctx.font = '500 11px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-
-      let name = pt.name;
-      const maxWidth = listPanelWidth - listPadding * 2 - 24;
-      while (ctx.measureText(name).width > maxWidth && name.length > 0) {
-        name = name.slice(0, -1);
-      }
-      if (name !== pt.name) name += '...';
-      ctx.fillText(name, listX + listPadding + 20, curY + 1);
-
-      curY += 20;
-    }
-
-    curY += 6;
-  }
-
-  if (hasOverflow) {
-    ctx.fillStyle = '#64748b';
-    ctx.font = '500 10px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('...更多地点扫码见交互链接', listX + listPadding, listY + actualHeight - 6);
+    curY += 30;
+    // 出发点标注
+    const modeText = payload.conditions.profile === 'driving-car' ? '驾车' : payload.conditions.profile === 'cycling-regular' ? '骑行' : '步行';
+    ctx.fillStyle = VISUAL_THEME.subtle;
+    ctx.font = '500 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(`出发地：${landmark.name} · 出行方式：${modeText}`, startX, curY);
   }
 }
 
-function drawLegendAndAttribution(
+function drawPosterFooterAndQR(
   ctx: CanvasRenderingContext2D,
-  payload: SharePayload,
-  mapWidth: number,
-  mapHeight: number,
-  offsetY: number
-) {
-  const legendWidth = 148;
-  const legendHeight = 112;
-  const legendX = mapWidth - legendWidth - 20;
-  const legendY = offsetY + mapHeight - legendHeight - 20;
-
-  // 图例背景
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
-  ctx.beginPath();
-  ensureRoundRect(ctx, legendX, legendY, legendWidth, legendHeight, 10);
-  ctx.fill();
-
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // 标题
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText('可达时间预估 (互斥)', legendX + 10, legendY + 8);
-
-  const ranges = payload.conditions.rangeMinutes;
-  ranges.forEach((min, idx) => {
-    const itemY = legendY + 28 + idx * 18;
-    const tierText = formatExclusiveTierTime(min, ranges);
-    const colors = getColorForRange(min);
-
-    ctx.fillStyle = colors.fillColor;
-    ctx.beginPath();
-    ensureRoundRect(ctx, legendX + 10, itemY, 14, 14, 3);
-    ctx.fill();
-
-    ctx.strokeStyle = colors.color;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#334155';
-    ctx.font = '500 10px system-ui, -apple-system, sans-serif';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(tierText, legendX + 30, itemY + 7);
-  });
-
-  // 署名与估算含义
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '400 9px system-ui, -apple-system, sans-serif';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText('© 高德地图 · 500m网格对齐预估', legendX + 10, legendY + legendHeight - 6);
-}
-
-function drawShareFooter(
-  ctx: CanvasRenderingContext2D,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   payload: SharePayload,
   qrImage: HTMLImageElement,
-  mapWidth: number,
-  totalHeight: number,
-  footerHeight: number,
+  width: number,
+  height: number,
   qrDisplaySize: number
 ) {
-  const footerY = totalHeight - footerHeight;
+  // 1. 左下角品牌签名（图2同款：谷粒 · KUHUNG / kuhung.me）
+  const brandX = 40;
+  const brandBottom = height - 36;
 
-  // 背景
-  const gradient = ctx.createLinearGradient(0, footerY, 0, totalHeight);
-  gradient.addColorStop(0, '#f8fafc');
-  gradient.addColorStop(1, '#f1f5f9');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, footerY, mapWidth, footerHeight);
+  // 底部柔和光影微背景，防止底图水系干扰左下角签名
+  const brandBg = ctx.createLinearGradient(0, height - 90, 0, height);
+  brandBg.addColorStop(0, 'rgba(255, 255, 255, 0)');
+  brandBg.addColorStop(1, 'rgba(255, 255, 255, 0.85)');
+  ctx.fillStyle = brandBg;
+  ctx.fillRect(0, height - 90, 260, 90);
 
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, footerY);
-  ctx.lineTo(mapWidth, footerY);
-  ctx.stroke();
-
-  const paddingX = 28;
-  const isDestination = Boolean(payload.selectedPOI);
-  const modeText = payload.conditions.profile === 'driving-car' ? '驾车' : payload.conditions.profile === 'cycling-regular' ? '骑行' : '步行';
-
-  const now = new Date(payload.createdAt);
-  const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
-
-  // 左侧品牌与信息
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = VISUAL_THEME.ink;
+  ctx.font = '800 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('可达出行', paddingX, footerY + 34);
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('谷粒 · KUHUNG', brandX, brandBottom - 18);
 
-  ctx.fillStyle = VISUAL_THEME.primaryDark;
-  ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
-  ctx.fillText('探索 1 小时出行圈', paddingX + 90, footerY + 34);
+  ctx.fillStyle = VISUAL_THEME.muted;
+  ctx.font = '500 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillText('kuhung.me', brandX, brandBottom);
 
-  ctx.fillStyle = '#475569';
-  ctx.font = '500 13px system-ui, -apple-system, sans-serif';
-  const subtitle = isDestination && payload.selectedPOI
-    ? `目的地: ${payload.selectedPOI.name} (从 ${payload.conditions.landmark.name} 出发 · ${modeText})`
-    : `出发起点: ${payload.conditions.landmark.name} · ${modeText} · 15/30/60m 可达探索`;
-  ctx.fillText(subtitle, paddingX, footerY + 62);
+  // 2. 右下角轻量二维码与图例卡片（扫码体验交互地图）
+  const qrPadding = 8;
+  const cardW = qrDisplaySize + qrPadding * 2;
+  const cardH = qrDisplaySize + qrPadding * 2 + 18;
+  const cardX = width - cardW - 24;
+  const cardY = height - cardH - 24;
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '400 11px system-ui, -apple-system, sans-serif';
-  ctx.fillText(`生成时间: ${dateStr} · 静态快照 · https://keda.kuhung.me`, paddingX, footerY + 86);
-
-  // 右侧二维码
-  const qrX = mapWidth - paddingX - qrDisplaySize;
-  const qrY = footerY + (footerHeight - qrDisplaySize) / 2;
-
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
   ctx.beginPath();
-  ensureRoundRect(ctx, qrX - 4, qrY - 4, qrDisplaySize + 8, qrDisplaySize + 8, 8);
+  ensureRoundRect(ctx, cardX, cardY, cardW, cardH, 10);
   ctx.fill();
 
-  ctx.strokeStyle = '#e2e8f0';
+  ctx.strokeStyle = VISUAL_THEME.border;
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  // 二维码
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(qrImage, qrX, qrY, qrDisplaySize, qrDisplaySize);
+  ctx.drawImage(qrImage, cardX + qrPadding, cardY + qrPadding, qrDisplaySize, qrDisplaySize);
   ctx.imageSmoothingEnabled = true;
 
-  ctx.fillStyle = '#64748b';
-  ctx.font = '500 10px system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = VISUAL_THEME.muted;
+  ctx.font = '600 10px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText(isDestination ? '扫码看路线' : '扫码看交互地图', qrX + qrDisplaySize / 2, qrY + qrDisplaySize + 4);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('扫码看交互地图', cardX + cardW / 2, cardY + qrDisplaySize + qrPadding + 9);
+
+  // 3. 数据来源微标注 (在二维码卡片左侧)
+  ctx.fillStyle = VISUAL_THEME.subtle;
+  ctx.font = '400 10px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
 }
+
