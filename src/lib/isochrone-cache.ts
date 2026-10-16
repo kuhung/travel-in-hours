@@ -1,5 +1,5 @@
-import { IsochroneFeature, TravelProfile } from '@/types';
-import { snapToGrid } from './grid';
+import type { IsochroneFeature, TravelProfile } from '../types';
+import { snapToGrid } from './grid.ts';
 
 // 缓存键生成
 export function generateCacheKey(
@@ -10,7 +10,7 @@ export function generateCacheKey(
   // 确保使用网格坐标生成 Key
   const coordinates = snapToGrid(rawCoordinates[0], rawCoordinates[1]);
   const coordKey = `${coordinates[0].toFixed(6)}_${coordinates[1].toFixed(6)}`;
-  const rangeKey = rangeMinutes.sort((a, b) => a - b).join('_');
+  const rangeKey = [...rangeMinutes].sort((a, b) => a - b).join('_');
   return `isochrone_${coordKey}_${profile}_${rangeKey}`;
 }
 
@@ -93,5 +93,4 @@ export function clearIsochroneCache(): void {
   }
   keysToRemove.forEach(key => localStorage.removeItem(key));
 }
-
 
