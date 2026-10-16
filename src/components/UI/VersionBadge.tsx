@@ -12,9 +12,9 @@ export default function VersionBadge() {
       title={`Git ${version}`}
     >
       <span className="pointer-events-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                       bg-slate-900/75 text-white/90 text-[11px] font-mono backdrop-blur-sm
-                       border border-white/10">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                       bg-white/95 text-slate-600 text-[11px] font-mono backdrop-blur-sm
+                       border border-slate-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
         {version}
       </span>
     </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { defaultTimeRanges, getColorForRange } from '@/data/isochrone-config';
+import { defaultTimeRanges, getIsochroneStyle } from '@/data/isochrone-config';
 import { formatExclusiveTierTime } from '@/lib/poi-utils';
 
 interface MapLegendProps {
@@ -14,14 +14,15 @@ export const MapLegend: React.FC<MapLegendProps> = ({
       <div className="text-xs font-semibold text-gray-500 mb-2">等时圈预估范围</div>
       <div className="flex flex-col gap-2">
         {rangeMinutes.map((minutes) => {
-          const { color, fillColor } = getColorForRange(minutes);
+          const { color, fillColor, dashArray } = getIsochroneStyle(minutes);
           return (
             <div key={minutes} className="flex items-center gap-2">
               <span
-                className="w-4 h-4 rounded-sm border opacity-80 shrink-0"
+                className="w-6 h-4 rounded-sm border-2 shrink-0"
                 style={{
                   backgroundColor: fillColor,
-                  borderColor: color
+                  borderColor: color,
+                  borderStyle: dashArray ? (minutes === 60 ? 'dotted' : 'dashed') : 'solid'
                 }}
               />
               <span className="text-xs text-gray-700 font-medium">

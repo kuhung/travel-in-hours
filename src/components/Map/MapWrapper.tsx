@@ -11,10 +11,10 @@ const IsochroneMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+      <div className="w-full h-full flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-400 border-t-transparent"></div>
-          <p className="text-emerald-400 text-lg font-medium">地图加载中...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent"></div>
+          <p className="text-blue-700 text-lg font-medium">地图加载中...</p>
         </div>
       </div>
     ),
@@ -35,6 +35,7 @@ interface MapWrapperProps {
   candidateCoordinates?: [number, number] | null;
   mapPadding?: MapPaddingResult;
   committedTimestamp?: number;
+  locationFocus?: CityLandmark | null;
 }
 
 export default function MapWrapper(props: MapWrapperProps) {

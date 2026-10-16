@@ -25,6 +25,7 @@ import {
   getIsochroneStyle,
   sortIsochronesForRender,
   DESTINATION_STYLE,
+  VISUAL_THEME,
 } from '../data/isochrone-config.ts';
 
 // ============ 类型定义 ============
@@ -716,6 +717,7 @@ export async function renderIsolatedMapSnapshot(
           fillColor: style.fillColor,
           weight: style.weight,
           opacity: style.strokeOpacity,
+          dashArray: style.dashArray,
           fillOpacity: style.opacity,
         },
       }).addTo(mapInstance);
@@ -727,7 +729,7 @@ export async function renderIsolatedMapSnapshot(
     const originIcon = L.divIcon({
       className: 'isolated-origin-marker',
       html: `
-        <div style="width: 24px; height: 24px; border-radius: 50%; background: #10b981; border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: ${VISUAL_THEME.accentInk}; border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
           <div style="width: 6px; height: 6px; border-radius: 50%; background: #ffffff;"></div>
         </div>
       `,
@@ -1086,7 +1088,7 @@ function drawDestinationHeader(
   ctx.lineTo(width, height);
   ctx.stroke();
 
-  // 标签（采用深青色 DESTINATION_STYLE 避免误导为危险/错误红）
+  // 标签（采用深色 DESTINATION_STYLE，与圈层区分）
   const paddingX = 28;
   let currentY = 28;
 
@@ -1202,7 +1204,7 @@ function drawPOIPanel(
 
   // 头部标题
   let curY = listY + listPadding;
-  ctx.fillStyle = '#10b981';
+  ctx.fillStyle = VISUAL_THEME.accentInk;
   ctx.beginPath();
   ensureRoundRect(ctx, listX + listPadding, curY, 3, 16, 1.5);
   ctx.fill();
@@ -1389,7 +1391,7 @@ function drawShareFooter(
   ctx.textBaseline = 'middle';
   ctx.fillText('可达出行', paddingX, footerY + 34);
 
-  ctx.fillStyle = '#059669';
+  ctx.fillStyle = VISUAL_THEME.primaryDark;
   ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
   ctx.fillText('探索 1 小时出行圈', paddingX + 90, footerY + 34);
 

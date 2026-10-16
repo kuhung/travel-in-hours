@@ -142,11 +142,11 @@ export function getCoverageStatusDescription(params: {
 
   if (status === 'uncovered') {
     return {
-      title: '超出当前收录范围',
-      badgeText: '未收录区域',
+      title: '可达范围已生成',
+      badgeText: '查看地图范围',
       badgeVariant: 'info',
-      explanation: `当前出发点${landmarkName ? `“${landmarkName}”` : ''}超出已收录区域。可达范围计算已完成，地点清单目前收录上海精选热门地标与珠海出入境服务厅。`,
-      helpfulNote: '建议重新在已收录核心城区选择出发点，或点击下方查看上海精选示例。',
+      explanation: `${landmarkName ? `“${landmarkName}”的` : ''}可达范围已显示在地图上，可直接缩放、拖动查看。地点清单目前收录上海精选热门地标与珠海出入境服务厅。`,
+      helpfulNote: '当前范围暂无精选地点，您仍可在地图上查看道路、地名和可达边界。',
       canViewExample: true,
       canEditOrigin: true,
       canChangeMode: false,
@@ -158,9 +158,9 @@ export function getCoverageStatusDescription(params: {
     return {
       title: '范围内暂无收录地点',
       badgeText: '0 处收录地点',
-      badgeVariant: 'warning',
-      explanation: `出发点位于已收录区域内，在${profileName} 60 分钟预估范围内暂未收录精选地点。`,
-      helpfulNote: '您可以尝试切换更快速的出行方式（如驾车）或更换出发点探索。',
+      badgeVariant: 'info',
+      explanation: `${profileName}可达范围已显示在地图上，范围内暂未匹配到精选地点。`,
+      helpfulNote: '可直接缩放、拖动地图查看可达边界，无需更换出发点。',
       canViewExample: true,
       canEditOrigin: true,
       canChangeMode: true,
@@ -170,11 +170,11 @@ export function getCoverageStatusDescription(params: {
 
   if (status === 'partial' && matchedCount === 0) {
     return {
-      title: '部分范围跨越收录边界',
-      badgeText: '跨边界未匹配',
-      badgeVariant: 'warning',
-      explanation: '当前等时圈范围部分超出了本地收录边界，且在已收录的区域内部暂未匹配到精选地点。',
-      helpfulNote: '建议查看收录核心区示例或将出发点移至收录中心区域。',
+      title: '可达范围已生成',
+      badgeText: '查看地图范围',
+      badgeVariant: 'info',
+      explanation: '可达范围已显示在地图上，可直接缩放、拖动查看。当前范围内暂未匹配到精选地点。',
+      helpfulNote: '精选地点仅供探索参考，查看可达范围无需匹配到地点。',
       canViewExample: true,
       canEditOrigin: true,
       canChangeMode: true,
@@ -203,3 +203,20 @@ export function getCoverageStatusDescription(params: {
  */
 export const ESTIMATION_DISCLAIMER_TEXT =
   '可达范围基于城市路网模型实估，供日常出行规划参考。';
+
+
+export interface POIListPreference {
+  resultId: number | null;
+  open: boolean;
+}
+
+/** 每份新结果按地点数决定清单默认状态，手动展开仅作用于当前结果。 */
+export function resolvePOIListOpen(params: {
+  resultId: number | null;
+  matchedCount: number;
+  dataError?: string | null;
+  preference: POIListPreference | null;
+}): boolean {
+  if (params.preference?.resultId === params.resultId) return params.preference.open;
+  return Boolean(params.dataError) || params.matchedCount > 0;
+}

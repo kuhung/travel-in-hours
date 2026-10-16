@@ -3,40 +3,32 @@ import type { IsochroneRange, TravelProfile } from '../types/index.ts';
 // 等时圈时间范围配置 (分钟) - 固定3档：15分钟、30分钟、1小时
 export const defaultTimeRanges = [15, 30, 60];
 
-// 统一颜色方案（Refactoring UI 体系：克制用色与层级，复用 emerald 品牌）
-// 15分钟：青绿 (Teal) · 核心圈（高对比、高清晰度，小圈层级最高）
-// 30分钟：蓝 (Blue) · 生活圈（中距离清晰层，平衡道路细节）
-// 60分钟：靛蓝 (Indigo) · 通勤圈（大圈层级最低，极淡透明度保留道路底图）
+// 视觉参考：白底深色标题，蓝色主操作，橙色强调与核心圈。
+export const VISUAL_THEME = {
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  accent: '#ff4b23',
+  accentInk: '#c2410c',
+  ink: '#111827',
+  surface: '#ffffff',
+} as const;
+
+// 15 分钟橙色核心圈，30 分钟蓝色，60 分钟浅蓝；线型辅助区分两层蓝色。
 export const isochroneColors: IsochroneRange[] = [
-  {
-    minutes: 15,
-    color: '#0f766e',     // 青绿 (Teal-700) - 边框/墨水/标记背景
-    fillColor: '#2dd4bf', // 青绿 (Teal-400) - 填充面/浅色徽章背景
-    opacity: 0.32,        // 填充透明度：小圈清晰
-  },
-  {
-    minutes: 30,
-    color: '#1d4ed8',     // 蓝 (Blue-700) - 边框/墨水/标记背景
-    fillColor: '#60a5fa', // 蓝 (Blue-400) - 填充面/浅色徽章背景
-    opacity: 0.23,        // 填充透明度：中圈均衡
-  },
-  {
-    minutes: 60,
-    color: '#4338ca',     // 靛蓝 (Indigo-700) - 边框/墨水/标记背景
-    fillColor: '#818cf8', // 靛蓝 (Indigo-400) - 填充面/浅色徽章背景
-    opacity: 0.16,        // 填充透明度：大圈淡，降低浓度保留道路底图
-  },
+  { minutes: 15, color: VISUAL_THEME.accentInk, fillColor: '#ff673f', opacity: 0.5 },
+  { minutes: 30, color: VISUAL_THEME.primaryDark, fillColor: '#3b82f6', opacity: 0.3 },
+  { minutes: 60, color: VISUAL_THEME.primary, fillColor: '#93c5fd', opacity: 0.16 },
 ];
 
-// 目的地标记样式统一契约（深青色，摆脱危险错误红混淆）
+// 选中目的地采用深色标记，与彩色圈层区分。
 export const DESTINATION_STYLE = {
-  ink: '#0f766e',        // 深青色标记底色 (Teal-700)
-  fill: '#ccfbf1',       // 浅青色填充背景 (Teal-100)
-  badgeBg: '#0f766e',    // 导出卡片目的地徽章底色
-  badgeText: '#ffffff',  // 白色文字 (对比度 >= 5.4:1)
-  stroke: '#ffffff',     // 边框描边
-  strokeWidth: 3,        // 加粗描边
-  scale: 1.15,           // 放大倍率
+  ink: VISUAL_THEME.ink,
+  fill: '#f1f5f9',
+  badgeBg: VISUAL_THEME.ink,
+  badgeText: '#ffffff',
+  stroke: '#ffffff',
+  strokeWidth: 3,
+  scale: 1.15,
 } as const;
 
 // 完整样式配置接口
@@ -46,6 +38,7 @@ export interface IsochroneStyle {
   fillColor: string;
   opacity: number;        // 面填充透明度 (fillOpacity)
   weight: number;         // 边界描边线宽
+  dashArray?: string;     // 实线 / 长虚线 / 短虚线，辅助区分圈层
   strokeOpacity: number;  // 边界描边透明度
 }
 
@@ -63,8 +56,9 @@ export const getIsochroneStyle = (minutes: number): IsochroneStyle => {
     color: config.color,
     fillColor: config.fillColor,
     opacity: config.opacity,
-    weight: 2,
-    strokeOpacity: 0.85,
+    weight: 3,
+    strokeOpacity: 1,
+    dashArray: config.minutes === 30 ? '10 6' : config.minutes === 60 ? '3 6' : undefined,
   };
 };
 
