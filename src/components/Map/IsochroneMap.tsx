@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
@@ -12,13 +12,18 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import { CityLandmark, IsochroneFeature, TravelProfile } from '@/types';
-import { getColorForRange } from '@/data/isochrone-config';
+import {
+  getColorForRange,
+  getIsochroneStyle,
+  sortIsochronesForRender,
+  DESTINATION_STYLE,
+} from '@/data/isochrone-config';
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/lib/coord-transform';
-import { POIWithLayer } from '@/lib/poi-utils';
+import { POIWithLayer, formatExclusiveTierTime } from '@/lib/poi-utils';
+import { getPOICategoryLabel, createAmapNavUrl, resolveNavigationAction, isMobileDevice } from '@/lib/navigation-utils.ts';
+import type { MapPaddingResult } from '@/lib/layout-utils';
 
 // 修复 Leaflet 默认图标问题
-// 注意：这个副作用只需要执行一次，但放在这里也无妨，因为它是幂等的（大部分）
-// 或者我们可以放在 useEffect 中
 const fixLeafletIcons = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -26,6 +31,8 @@ const fixLeafletIcons = () => {
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    // 允许 html2canvas 跨域读取图标，避免截图 canvas 被污染（吸收自远端 d368e14）
+    crossOrigin: 'anonymous',
   });
 };
 
@@ -37,6 +44,12 @@ interface IsochroneMapProps {
   rangeMinutes: number[];
   onMapClick?: (lat: number, lng: number) => void;
   highlightedPOI?: number | null;
+  selectedPOIId?: string | null;
+  onSelectPOI?: (poiId: string | null) => void;
+  isPickingLocation?: boolean;
+  candidateCoordinates?: [number, number] | null; // [lng, lat] (WGS-84)
+  mapPadding?: MapPaddingResult;
+  committedTimestamp?: number;
 }
 
 export default function IsochroneMap({
@@ -47,8 +60,13 @@ export default function IsochroneMap({
   rangeMinutes,
   onMapClick,
   highlightedPOI,
+  selectedPOIId = null,
+  onSelectPOI,
+  isPickingLocation = false,
+  candidateCoordinates = null,
+  mapPadding,
+  committedTimestamp,
 }: IsochroneMapProps) {
-  
   useEffect(() => {
     fixLeafletIcons();
   }, []);
@@ -92,31 +110,28 @@ export default function IsochroneMap({
     });
   }, [isochrones]);
 
-  // GeoJSON 样式函数
+  // GeoJSON 样式函数（单一样式契约）
   const getStyle = useCallback((feature: GeoJSON.Feature | undefined) => {
     if (!feature?.properties) return {};
     
     const rangeValue = feature.properties.value; // 秒
-    const rangeInMinutes = rangeValue / 60;
-    const colorConfig = getColorForRange(rangeInMinutes);
+    const rangeInMinutes = Math.round(rangeValue / 60);
+    const style = getIsochroneStyle(rangeInMinutes);
     
     return {
-      color: colorConfig.color,
-      fillColor: colorConfig.fillColor,
-      fillOpacity: colorConfig.opacity,
-      weight: 2,
+      color: style.color,
+      fillColor: style.fillColor,
+      fillOpacity: style.opacity,
+      weight: style.weight,
+      opacity: style.strokeOpacity,
     };
   }, []);
 
-  // 每个等时圈的弹出内容
+  // 每个等时圈的弹出内容（采用最小互斥圈层表达与估算披露）
   const onEachFeature = useCallback((feature: GeoJSON.Feature, layer: L.Layer) => {
     if (feature.properties) {
-      const minutes = feature.properties.value / 60;
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      const timeStr = hours > 0 
-        ? `${hours}小时${mins > 0 ? mins + '分钟' : ''}`
-        : `${mins}分钟`;
+      const minutes = Math.round(feature.properties.value / 60);
+      const tierLabel = formatExclusiveTierTime(minutes, rangeMinutes);
       
       const profileName = profile === 'driving-car' 
         ? '驾车' 
@@ -126,17 +141,20 @@ export default function IsochroneMap({
       
       layer.bindPopup(`
         <div class="p-2">
-          <div class="font-semibold text-gray-800">${timeStr}可达范围</div>
+          <div class="font-semibold text-gray-800">${tierLabel} 预估可达圈</div>
           <div class="text-sm text-gray-600">出行方式: ${profileName}</div>
           ${feature.properties.area ? `<div class="text-sm text-gray-600">覆盖面积: ${(feature.properties.area / 1000000).toFixed(2)} km²</div>` : ''}
+          <div class="text-[11px] text-gray-400 mt-1.5 pt-1 border-t border-gray-100">
+            500m网格对齐与折扣实估，非实时路况承诺
+          </div>
         </div>
       `);
     }
-  }, [profile]);
+  }, [profile, rangeMinutes]);
 
-  // 排序后的等时圈数据
+  // 排序后的等时圈数据（大圈先绘制底图，小圈后绘制上层）
   const sortedIsochrones = useMemo(() => {
-    return [...transformedIsochrones].sort((a, b) => b.properties.value - a.properties.value);
+    return sortIsochronesForRender(transformedIsochrones);
   }, [transformedIsochrones]);
 
   // 地标位置 (转换为 GCJ-02)
@@ -146,20 +164,25 @@ export default function IsochroneMap({
     return [lat, lng];
   }, [landmark]);
 
-  // 圈层颜色配置
-  const layerColors: Record<number, { color: string; fillColor: string }> = {
-    15: { color: '#15803d', fillColor: '#86efac' },
-    30: { color: '#a16207', fillColor: '#fde68a' },
-    60: { color: '#dc2626', fillColor: '#fca5a5' },
-  };
+  // 选点模式下的候选位置 (转换为 GCJ-02)
+  const candidatePosition: [number, number] | null = useMemo(() => {
+    if (!candidateCoordinates) return null;
+    const [lng, lat] = wgs84ToGcj02(candidateCoordinates[0], candidateCoordinates[1]);
+    return [lat, lng];
+  }, [candidateCoordinates]);
 
-  // 创建编号气泡图标
+  // 选中的 POI 坐标（GCJ-02，供可用视口 panInside 避让定位）
+  const selectedPOIPosition = useMemo(() => {
+    if (!selectedPOIId) return null;
+    const found = poiWithLayers.find(p => p.id === selectedPOIId);
+    return found ? found.position : null;
+  }, [poiWithLayers, selectedPOIId]);
+
+  // 创建编号气泡图标（支持高亮与选中态，非危险红标识）
   const createNumberIcon = useCallback((index: number, layerMinutes: number, isHighlighted: boolean) => {
-    const colors = layerColors[layerMinutes] || { color: '#3b82f6', fillColor: '#93c5fd' };
-    const size = isHighlighted ? 42 : 32; // 稍微调大一点以容纳水滴形状
+    const colors = getColorForRange(layerMinutes);
+    const size = isHighlighted ? 42 : 32;
     const fontSize = isHighlighted ? 14 : 12;
-    
-    // 水滴形状的 SVG 路径
     const pinPath = "M16 0C7.163 0 0 7.163 0 16c0 8.837 16 32 16 32s16-23.163 16-32C32 7.163 24.837 0 16 0z";
     
     return L.divIcon({
@@ -171,10 +194,10 @@ export default function IsochroneMap({
           height: ${size * 1.5}px;
           filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));
           transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          ${isHighlighted ? 'transform: scale(1.1) translateY(-4px); z-index: 1000;' : 'transform: translateY(0);'}
+          ${isHighlighted ? 'transform: scale(1.15) translateY(-4px); z-index: 1000;' : 'transform: translateY(0);'}
         ">
           <svg viewBox="0 0 32 48" width="100%" height="100%" style="overflow: visible;">
-            <path d="${pinPath}" fill="${colors.color}" stroke="white" stroke-width="2" />
+            <path d="${pinPath}" fill="${isHighlighted ? DESTINATION_STYLE.ink : colors.color}" stroke="${isHighlighted ? '#ffffff' : 'white'}" stroke-width="${isHighlighted ? '3.5' : '2'}" />
             <circle cx="16" cy="16" r="10" fill="rgba(255,255,255,0.15)" />
           </svg>
           <div style="
@@ -195,8 +218,44 @@ export default function IsochroneMap({
         </div>
       `,
       iconSize: [size, size * 1.5],
-      iconAnchor: [size / 2, size * 1.5], // 锚点在底部尖端
-      popupAnchor: [0, -size * 1.5], // 弹窗在顶部上方
+      iconAnchor: [size / 2, size * 1.5],
+      popupAnchor: [0, -size * 1.5],
+    });
+  }, []);
+
+  // 创建选点候选标记图标
+  const createCandidateIcon = useCallback(() => {
+    const size = 38;
+    const pinPath = "M16 0C7.163 0 0 7.163 0 16c0 8.837 16 32 16 32s16-23.163 16-32C32 7.163 24.837 0 16 0z";
+    return L.divIcon({
+      className: 'candidate-pin-marker',
+      html: `
+        <div style="
+          position: relative;
+          width: ${size}px;
+          height: ${size * 1.5}px;
+          filter: drop-shadow(0 4px 8px rgba(245, 158, 11, 0.5));
+          animation: bounce 0.6s infinite alternate;
+        ">
+          <svg viewBox="0 0 32 48" width="100%" height="100%" style="overflow: visible;">
+            <path d="${pinPath}" fill="#f59e0b" stroke="white" stroke-width="2.5" />
+            <circle cx="16" cy="16" r="9" fill="white" />
+          </svg>
+          <div style="
+            position: absolute;
+            top: 4px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: #d97706;
+          ">选</div>
+        </div>
+      `,
+      iconSize: [size, size * 1.5],
+      iconAnchor: [size / 2, size * 1.5],
+      popupAnchor: [0, -size * 1.5],
     });
   }, []);
 
@@ -204,25 +263,30 @@ export default function IsochroneMap({
     <MapContainer
       center={center}
       zoom={zoom}
-      className="w-full h-full"
+      className={`w-full h-full ${isPickingLocation ? 'cursor-crosshair' : ''}`}
       scrollWheelZoom={true}
       zoomControl={false}
-      preferCanvas={true} // 使用 Canvas 渲染，提高截图成功率
+      preferCanvas={true}
     >
       <ZoomControl position="bottomleft" />
 
       <TileLayer
         attribution='&copy; <a href="https://lbs.amap.com/">高德地图</a>'
         url="https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}"
+        crossOrigin="anonymous"
       />
       
       <MapControllerWrapper 
         center={center} 
         zoom={zoom} 
         onMapClick={onMapClick} 
+        isPickingLocation={isPickingLocation}
         useMapHook={useMap}
         isochrones={transformedIsochrones}
         landmark={landmark}
+        mapPadding={mapPadding}
+        committedTimestamp={committedTimestamp}
+        selectedPOIPosition={selectedPOIPosition}
       />
       
       {/* 渲染等时圈 - 从大到小渲染以确保小的在上面 */}
@@ -235,7 +299,7 @@ export default function IsochroneMap({
         />
       ))}
       
-      {/* 地标标记 */}
+      {/* 地标标记（已提交或当前选中的起点） */}
       {landmark && markerPosition && (
         <Marker position={markerPosition}>
           <Popup>
@@ -253,39 +317,106 @@ export default function IsochroneMap({
         </Marker>
       )}
 
-      {/* 兴趣点标记 - 使用编号气泡 */}
-      {poiWithLayers.map(poi => (
-        <Marker
-          key={poi.id}
-          position={poi.position}
-          icon={createNumberIcon(poi.index, poi.layerMinutes, highlightedPOI === poi.index)}
-        >
+      {/* 选点模式下的候选临时标记 */}
+      {isPickingLocation && candidatePosition && (
+        <Marker position={candidatePosition} icon={createCandidateIcon()}>
           <Popup>
-            <div className="p-2 min-w-[160px]">
-              <div className="flex items-center gap-2 mb-2">
-                <span 
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                  style={{ backgroundColor: layerColors[poi.layerMinutes]?.color || '#3b82f6' }}
-                >
-                  {poi.index}
-                </span>
-                <span className="font-bold text-base text-gray-800">{poi.name}</span>
-              </div>
-              {poi.description && (
-                <div className="text-xs text-gray-600 mb-2">{poi.description}</div>
-              )}
-              <div className="text-xs px-2 py-1 rounded-full inline-block"
-                style={{ 
-                  backgroundColor: layerColors[poi.layerMinutes]?.fillColor || '#93c5fd',
-                  color: layerColors[poi.layerMinutes]?.color || '#3b82f6'
-                }}
-              >
-                {poi.layerMinutes >= 60 ? `${poi.layerMinutes / 60}小时` : `${poi.layerMinutes}分钟`}内可达
-              </div>
+            <div className="p-1">
+              <div className="font-bold text-amber-600">候选出发点</div>
+              <div className="text-xs text-gray-500 mt-1">请在上方确认栏点击“确认出发点”</div>
             </div>
           </Popup>
         </Marker>
-      ))}
+      )}
+
+      {/* 兴趣点标记 - 使用编号气泡，支持点击选中与稳定 ID 回调 */}
+      {poiWithLayers.map(poi => {
+        const isHighlighted = highlightedPOI === poi.index || selectedPOIId === poi.id;
+        const exclusiveTier = formatExclusiveTierTime(poi.layerMinutes, rangeMinutes);
+
+        return (
+          <Marker
+            key={poi.id}
+            position={poi.position}
+            icon={createNumberIcon(poi.index, poi.layerMinutes, isHighlighted)}
+            eventHandlers={{
+              click: () => {
+                onSelectPOI?.(poi.id);
+              },
+            }}
+          >
+            <Popup>
+              <div className="p-2 min-w-[160px]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                    style={{ backgroundColor: getColorForRange(poi.layerMinutes).color }}
+                  >
+                    {poi.index}
+                  </span>
+                  <span className="font-bold text-base text-gray-800 truncate">{poi.name}</span>
+                </div>
+                {poi.description && (
+                  <div className="text-xs text-gray-600 mb-2">{poi.description}</div>
+                )}
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">
+                    {getPOICategoryLabel(poi.category)}
+                  </span>
+                  <div
+                    className="text-[10px] px-1.5 py-0.5 rounded-full inline-block font-medium"
+                    style={{
+                      backgroundColor: `${getColorForRange(poi.layerMinutes).fillColor}30`,
+                      color: getColorForRange(poi.layerMinutes).color,
+                      border: `1px solid ${getColorForRange(poi.layerMinutes).color}40`,
+                    }}
+                  >
+                    {exclusiveTier} 预估可达
+                  </div>
+                </div>
+                {landmark && (() => {
+                  const navUrl = createAmapNavUrl({
+                    origin: { coordinates: landmark.coordinates, name: landmark.name },
+                    destination: { coordinates: poi.coordinates, name: poi.name },
+                    profile,
+                  });
+                  const action = resolveNavigationAction({
+                    profile,
+                    isMobilePlatform: isMobileDevice(),
+                    navUrl,
+                  });
+
+                  if (action.canDirectlyNavigate && navUrl) {
+                    return (
+                      <a
+                        href={navUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2.5 w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg flex items-center justify-center gap-1 shadow-sm cursor-pointer transition-colors text-center"
+                      >
+                        <span>在外部地图中导航</span>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <div className="mt-2 p-1.5 bg-amber-50 rounded border border-amber-200 text-[10px] text-amber-800 leading-tight">
+                      骑行导航仅限手机端高德APP支持，请在清单中查看或复制地点信息
+                    </div>
+                  );
+                })()}
+                <div className="text-[10px] text-gray-400 mt-1.5 pt-1 border-t border-gray-100">
+                  预估圈层 · 非单点精确时间
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
     </MapContainer>
   );
 }
@@ -295,19 +426,29 @@ function MapControllerWrapper({
   center, 
   zoom,
   onMapClick,
+  isPickingLocation = false,
   useMapHook,
   isochrones,
-  landmark
+  landmark,
+  mapPadding,
+  committedTimestamp,
+  selectedPOIPosition,
 }: { 
   center: [number, number]; 
   zoom: number;
   onMapClick?: (lat: number, lng: number) => void;
+  isPickingLocation?: boolean;
   useMapHook: () => L.Map;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   isochrones: any[];
   landmark: CityLandmark | null;
+  mapPadding?: MapPaddingResult;
+  committedTimestamp?: number;
+  selectedPOIPosition?: [number, number] | null;
 }) {
   const map = useMapHook();
+  const lastFittedTimestampRef = useRef<number | null>(null);
+  const fitRunIdRef = useRef<number>(0);
 
   // 暴露 map 实例给 window 对象，以便在截图时控制
   useEffect(() => {
@@ -316,45 +457,109 @@ function MapControllerWrapper({
       (window as any).__leaflet_map = map;
     }
   }, [map]);
-  
-  // 基础视图控制
+
+  // 容器尺寸监听：仅更新 Leaflet 视口内部尺寸，杜绝反复 fitBounds 重置用户缩放拖动
   useEffect(() => {
-    // 只有当没有等时圈数据时，才强制跟随 center/zoom
-    // 如果有等时圈数据，我们将优先适配等时圈的范围
+    const container = map.getContainer();
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    const ro = new ResizeObserver(() => {
+      map.invalidateSize({ debounceMoveend: true });
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [map]);
+
+  // 视口安全移动：当选中地点变更时，调用 panInside 确保标记在可用视口内可见，绝不调用 fitBounds 重置缩放
+  useEffect(() => {
+    if (!selectedPOIPosition) return;
+    const padding = mapPadding || {
+      paddingTopLeft: [50, 50],
+      paddingBottomRight: [50, 50],
+    };
+
+    try {
+      map.panInside(selectedPOIPosition, {
+        paddingTopLeft: padding.paddingTopLeft,
+        paddingBottomRight: padding.paddingBottomRight,
+        animate: true,
+      });
+    } catch {
+      map.panTo(selectedPOIPosition, { animate: true });
+    }
+  }, [selectedPOIPosition, map, mapPadding]);
+
+  // 基础视图控制（仅在无等时圈时依地标定位）
+  useEffect(() => {
     if (isochrones.length === 0) {
-      // 如果是自定义选点（ID以 'custom-' 开头），保持当前缩放级别，只移动中心
       if (landmark?.id?.startsWith('custom-')) {
         map.panTo(center, { animate: true });
       } else {
-        // 预设地标或初始状态，设置中心和缩放
         map.setView(center, zoom, { animate: true });
       }
     }
   }, [center, map, zoom, isochrones.length, landmark]);
 
-  // 自动适配等时圈范围
+  // 自动适配等时圈范围：
+  // 1. 仅在 committedTimestamp 产生新快照时触发一次 fitBounds，严格保留用户手动拖拽与缩放；
+  // 2. 动态 import 增加取消守卫与递增版本守卫，确保最新快照胜出并清理在途异步回调。
   useEffect(() => {
-    if (isochrones.length > 0) {
-      // 动态导入 L (leaflet) 因为我们在 useEffect 中
-      import('leaflet').then((L) => {
-        const group = L.default.geoJSON(isochrones);
-        const bounds = group.getBounds();
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { 
-            padding: [50, 50], // 增加内边距
-            animate: true,
-            duration: 1
-          });
-        }
-      });
+    if (isochrones.length === 0) return;
+
+    // 若已经为当前 committed 快照适配过范围，则不再因其他状态变更反复自动 fit
+    if (committedTimestamp && committedTimestamp === lastFittedTimestampRef.current) {
+      return;
     }
-  }, [isochrones, map]);
-  
+
+    const currentRunId = ++fitRunIdRef.current;
+    let cancelled = false;
+    const currentSnapshotTimestamp = committedTimestamp ?? Date.now();
+
+    import('leaflet').then((L) => {
+      if (cancelled || currentRunId !== fitRunIdRef.current) return;
+      if (committedTimestamp && committedTimestamp === lastFittedTimestampRef.current) {
+        return;
+      }
+
+      const group = L.default.geoJSON(isochrones);
+      const bounds = group.getBounds();
+      if (bounds.isValid() && !cancelled && currentRunId === fitRunIdRef.current) {
+        lastFittedTimestampRef.current = currentSnapshotTimestamp;
+        const padding = mapPadding || {
+          paddingTopLeft: [50, 50],
+          paddingBottomRight: [50, 50],
+        };
+
+        map.fitBounds(bounds, {
+          paddingTopLeft: padding.paddingTopLeft,
+          paddingBottomRight: padding.paddingBottomRight,
+          animate: true,
+          duration: 0.8,
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isochrones, map, committedTimestamp, mapPadding]);
+
+  // 选点模式光标样式更新
   useEffect(() => {
-    if (!onMapClick) return;
+    const container = map.getContainer();
+    if (isPickingLocation) {
+      container.style.cursor = 'crosshair';
+    } else {
+      container.style.cursor = '';
+    }
+  }, [map, isPickingLocation]);
+  
+  // 仅在显式地图选点模式下响应地图点击
+  // 普通浏览、拖动、放大缩小点击均不触发选点，防止误触清空结果
+  useEffect(() => {
+    if (!isPickingLocation || !onMapClick) return;
     
     const handleClick = (e: L.LeafletMouseEvent) => {
-      // 将点击的 GCJ-02 坐标转回 WGS-84
       const [lng, lat] = gcj02ToWgs84(e.latlng.lng, e.latlng.lat);
       onMapClick(lat, lng);
     };
@@ -363,7 +568,7 @@ function MapControllerWrapper({
     return () => {
       map.off('click', handleClick);
     };
-  }, [map, onMapClick]);
+  }, [map, onMapClick, isPickingLocation]);
   
   return null;
 }

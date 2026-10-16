@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
+import PrivacyAnalytics from '@/components/App/PrivacyAnalytics';
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -18,21 +18,21 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
-  title: "出行可达地图 | 你的1小时逃离计划生成器",
-  description: "输入出发地，一键生成1-3小时内的可达范围。无论是周末自驾逃离城市，还是城市漫步探索未知，发现你的生活半径极限。",
+  title: "出行可达地图 | 探索你的 1 小时生活圈",
+  description: "输入出发地，查看固定 15 / 30 / 60 分钟（1小时内）出行可达范围。支持自驾、骑行与步行三种方式，发现周边已收录的可达地点。",
   keywords: ["可达地图", "等时圈", "周末去哪儿", "逃离北上广", "自驾游规划", "生活圈可视化", "OpenRouteService", "交通分析"],
   authors: [{ name: "kuhung", url: "https://kuhung.me/about" }],
   openGraph: {
-    title: "出行可达地图 | 发现你的生活边界",
-    description: "在这个城市，你的自由半径有多大？一键生成你的1-3小时出行圈。🚗 🚴‍♀️ 🚶",
+    title: "出行可达地图 | 探索你的 1 小时生活圈",
+    description: "输入出发地，查看 15 / 30 / 60 分钟出行可达范围与已收录地点。🚗 🚴 🚶",
     type: "website",
     locale: "zh_CN",
     siteName: "出行可达地图",
   },
   twitter: {
     card: "summary_large_image",
-    title: "出行可达地图 | 发现你的生活边界",
-    description: "在这个城市，你的自由半径有多大？一键生成你的1-3小时出行圈。",
+    title: "出行可达地图 | 探索你的 1 小时生活圈",
+    description: "输入出发地，查看 15 / 30 / 60 分钟出行可达范围与已收录地点。",
     creator: "@kuhung",
   },
 };
@@ -42,7 +42,7 @@ const jsonLd = {
   "@type": "WebApplication",
   "name": "出行可达地图",
   "url": "https://keda.kuhung.me/",
-  "description": "输入出发地，一键算出 15 分钟到 3 小时车程能到的范围，用来找周末去哪、看清自己的生活半径。",
+  "description": "输入出发地，查看固定 15 / 30 / 60 分钟（1小时内）出行可达范围，用于发现周边可达地点与生活半径。",
   "applicationCategory": "TravelApplication",
   "operatingSystem": "Web Browser",
   "browserRequirements": "Requires JavaScript",
@@ -58,12 +58,12 @@ const jsonLd = {
     "url": "https://kuhung.me"
   },
   "featureList": [
-    "按时间画可达范围",
-    "15 分钟到 3 小时多档位",
-    "周末自驾逃离城市",
-    "城市漫步探索"
+    "固定 15、30、60 分钟（1小时内）等时圈",
+    "自驾、骑行、步行三种出行方式",
+    "已收录核心城市地标与周边地点发现",
+    "支持从当前位置或地图选点探索"
   ]
-}
+};
 
 export default function RootLayout({
   children,
@@ -78,7 +78,10 @@ export default function RootLayout({
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-S9K4XS0DZ6');
+          gtag('config', 'G-S9K4XS0DZ6', {
+            page_location: window.location.origin + window.location.pathname,
+            page_referrer: document.referrer.split('?')[0].split('#')[0]
+          });
         ` }} />
         <script
           type="application/ld+json"
@@ -89,7 +92,7 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {children}
-        <Analytics />
+        <PrivacyAnalytics />
       </body>
     </html>
   );

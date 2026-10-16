@@ -4,7 +4,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: 'https://keda.kuhung.me/',
-      lastModified: new Date('2026-09-07'),
+      lastModified: new Date('2026-09-26'),
       changeFrequency: 'weekly',
       priority: 1,
     },

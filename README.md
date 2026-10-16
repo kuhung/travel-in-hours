@@ -7,9 +7,9 @@
 
 **在线体验**: [keda.kuhung.me](https://keda.kuhung.me)
 
-基于 OpenRouteService 等时圈 API，可视化从任意出发点在指定时间内可达的地理范围。支持驾车、骑行、步行三种出行方式，覆盖国内 7 座城市核心地标，帮助你快速发现"生活半径"。
+基于等时圈路网计算引擎，可视化从任意出发点在指定时间内可达的地理范围。支持驾车、骑行、步行三种出行方式，覆盖国内 8 座核心城市及精选地标，帮助你快速发现自己的“生活半径”。
 
-> Visualize reachable areas from any starting point within a given time using the OpenRouteService Isochrones API. Supports driving, cycling, and walking across 7 major Chinese cities.
+> Visualize reachable areas from any starting point within a given time using isochrone routing. Supports driving, cycling, and walking across major Chinese cities.
 
 ![出行可达地图预览](https://opengraph.kuhung.me/api/image?url=https://keda.kuhung.me)
 
@@ -17,14 +17,15 @@
 
 ## 功能特点
 
-- **多种出行方式**: 驾车 / 骑行 / 步行，覆盖日常出行场景
-- **灵活时间范围**: 15 分钟至 3 小时可达范围，分层可视化
-- **预设城市地标**: 覆盖上海、杭州、广州、深圳、成都、绍兴、重庆 7 座城市的核心交通枢纽与地标
-- **自定义选点**: 点击地图任意位置设置出发点（每日 5 次）
-- **POI 发现**: 自动标注可达范围内的兴趣点（景区、交通枢纽等）
-- **一键分享**: 生成带二维码的地图截图，支持微博 / Twitter / 微信分享
-- **分享链接**: URL 参数还原分享状态，便于二次传播
-- **响应式设计**: 移动端与桌面端自适应布局
+- **多种出行方式**: 驾车 / 骑行 / 步行，全场景覆盖日常出行需求
+- **阶梯时间范围**: 固定 15、30、60 分钟（1 小时内）分层等时圈，清晰呈现不同时长的生活圈边界
+- **预设城市地标**: 覆盖上海、杭州、广州、深圳、成都、绍兴、重庆、珠海 8 座城市的核心交通枢纽与特色地标
+- **自由选点探索**: 支持浏览器快速定位，或在地图上任意点击直接设定出发点
+- **精选地点与详情**: 列表与地图标记双向联动点选，展示地点名称、类别、简介与预估圈层，收录上海热门文旅地标与珠海市 15 处出入境智能服务厅专题数据
+- **外部地图导航**: 接入高德开放平台路径规划服务，提供真实起终点直达导航，桌面端智能提供导航参数与坐标复制
+- **探索卡片导出**: 生成带二维码的高清等时圈分享卡片，支持长图下载、高清预览与链接复制
+- **URL 状态还原**: 探索条件（起点、方式、时长与选中的地点）自动编码至 URL，便于直接传播与无损恢复
+- **自适应设计**: 深度适配移动端与桌面端屏幕交互
 
 ---
 
@@ -59,13 +60,17 @@ ORS_API_KEY=your_api_key_here
 # NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 本地开发
+### 本地开发与测试
 
 ```bash
+# 启动本地开发服务器
 npm run dev
+
+# 运行自动化测试套件
+npm test
 ```
 
-打开 [http://localhost:3000](http://localhost:3000) 查看效果。
+打开 [http://localhost:3000](http://localhost:3000) 即可查看效果。
 
 ---
 
@@ -79,7 +84,7 @@ npm run dev
 
 1. Fork 本仓库
 2. 在 [Vercel](https://vercel.com) 中导入项目
-3. 配置以下环境变量：
+3. 配置环境变量：
    - `ORS_API_KEY`: OpenRouteService API Key（必填）
    - `NEXT_PUBLIC_APP_URL`: 你的应用 URL（可选，用于生成分享链接）
 
@@ -87,18 +92,18 @@ npm run dev
 
 ## 技术栈
 
-| 层级 | 技术 |
+| 层级 | 技术选型 |
 |------|------|
-| 框架 | [Next.js 16](https://nextjs.org/) (App Router) |
+| 框架 | [Next.js 16](https://nextjs.org/) (App Router) + [React 19](https://react.dev/) |
 | 语言 | [TypeScript 5](https://www.typescriptlang.org/) |
 | 样式 | [Tailwind CSS 4](https://tailwindcss.com/) |
-| 地图 | [React Leaflet](https://react-leaflet.js.org/) + [Leaflet](https://leafletjs.com/) |
-| 地图数据 | [OpenStreetMap](https://www.openstreetmap.org/) |
-| 路径 API | [OpenRouteService Isochrones API](https://openrouteservice.org/dev/#/api-docs/v2/isochrones) |
-| 截图 | [html2canvas](https://html2canvas.hertzen.com/) |
-| 二维码 | [qrcode](https://github.com/soldair/node-qrcode) |
-| 监控 | [Vercel Analytics](https://vercel.com/analytics) |
-| 部署 | [Vercel](https://vercel.com) |
+| 地图渲染 | [React Leaflet](https://react-leaflet.js.org/) + [Leaflet](https://leafletjs.com/) |
+| 底图数据 | [OpenStreetMap](https://www.openstreetmap.org/) + 高德地图瓦片 |
+| 路径计算 | [OpenRouteService Isochrones API](https://openrouteservice.org/dev/#/api-docs/v2/isochrones) |
+| 外部导航 | [高德开放平台 URI API](https://lbs.amap.com/api/uri-api/guide/travel/route) |
+| 导出分享 | [html2canvas](https://html2canvas.hertzen.com/) + [qrcode](https://github.com/soldair/node-qrcode) |
+| 指标分析 | [Vercel Web Analytics](https://vercel.com/analytics)（数据最小化与隐私合规） |
+| 自动化测试 | Node.js 原生 Test Runner（`node:test` + `node:assert`） |
 
 ---
 
@@ -106,67 +111,60 @@ npm run dev
 
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── api/isochrones/     # 等时圈代理 API（服务端，保护 API Key）
-│   ├── globals.css
-│   ├── layout.tsx          # 根布局（SEO Metadata、Analytics）
-│   ├── opengraph-image.tsx # 动态 OG 图片
-│   └── page.tsx
+├── app/                        # Next.js App Router
+│   ├── api/isochrones/         # 等时圈代理 API（服务端保护 API Key）
+│   ├── globals.css             # 全局样式
+│   ├── layout.tsx              # 根布局（SEO Metadata、Analytics）
+│   ├── opengraph-image.tsx     # 动态 OG 图片生成
+│   ├── robots.ts / sitemap.ts  # 搜索引擎抓取配置
+│   └── page.tsx                # 主页面入口
 ├── components/
-│   ├── App/                # 主应用组件（状态管理入口）
-│   ├── Controls/           # 控制面板（城市选择、出行方式、分享）
-│   ├── Map/                # 地图组件（等时圈渲染、POI 标注）
-│   └── UI/                 # 通用 UI（错误提示、引导、微信弹窗）
+│   ├── App/                    # 主应用状态（IsochroneApp、PrivacyAnalytics）
+│   ├── Controls/               # 控制面板（城市选择、出行方式、地点清单、ShareDialog、POIDetailCard）
+│   ├── Map/                    # 地图组件（IsochroneMap、MapLegend、MapWrapper）
+│   └── UI/                     # 通用 UI（WelcomeGuide、VersionBadge）
 ├── data/
-│   ├── landmarks.ts        # 城市地标数据
-│   ├── interest-points.ts  # 兴趣点数据
-│   └── isochrone-config.ts # 时间范围配置
+│   ├── landmarks.ts            # 8 城预设交通枢纽与地标
+│   ├── interest-points.ts      # 精选兴趣点与收录区域声明
+│   ├── zhuhai-immigration-halls.ts # 珠海出入境智能服务厅专题数据
+│   └── isochrone-config.ts     # 时间圈层配色与样式配置
 ├── hooks/
-│   ├── useIsochrones.ts    # 等时圈数据请求 Hook
-│   ├── useShareParams.ts   # URL 分享参数解析 Hook
-│   └── useSelectionLimit.ts# 自定义选点次数限制 Hook
+│   ├── useIsochrones.ts        # 等时圈数据生命周期管理
+│   ├── useShareParams.ts       # URL 分享状态解析 Hook
+│   └── useSelectionLimit.ts    # 选点限制管理 Hook
 ├── lib/
-│   ├── ors-client.ts       # OpenRouteService API 客户端
-│   ├── isochrone-cache.ts  # 客户端内存缓存
-│   ├── cache-preloader.ts  # 热门地标后台预加载
-│   ├── share-utils.ts      # 截图与分享工具函数
-│   ├── poi-utils.ts        # POI 分层计算
-│   ├── grid.ts             # 坐标网格工具
-│   └── coord-transform.ts  # GCJ-02 坐标转换
-└── types/index.ts          # TypeScript 类型定义
+│   ├── geo-utils.ts            # 空间几何计算引擎（点在多边形、孔洞排除、MultiPolygon、重叠评估）
+│   ├── poi-utils.ts            # POI 圈层归属与状态检索
+│   ├── share-params.ts         # 分享参数严格序列化与反序列化
+│   ├── share-utils.ts          # 离屏渲染与分享卡片导出
+│   ├── navigation-utils.ts     # 外部地图导航构建与平台适配
+│   ├── exploration-state.ts    # 探索状态机与请求生命周期管理器
+│   ├── layout-utils.ts         # 视口避让与展示状态解析
+│   ├── coord-transform.ts      # WGS-84 / GCJ-02 坐标转换
+│   └── analytics.ts            # 旅程分析事件分发（属性白名单与隐私保护）
+└── types/index.ts              # 核心 TypeScript 类型定义
 ```
 
 ---
 
-## API 限制说明
+## 核心设计与计算模型
 
-使用 OpenRouteService 免费套餐时的约束：
-
-| 出行方式 | 最大可达时间 | 每分钟请求数 |
-|----------|-------------|-------------|
-| 驾车     | 1 小时      | 40 次       |
-| 骑行     | 5 小时      | 40 次       |
-| 步行     | 20 小时     | 40 次       |
-
-本项目已内置客户端内存缓存和后台预加载机制，在相同参数下重复请求不消耗 API 配额。
+1. **路网模型与阶梯圈层**：基于道路拓扑网络模型实估 15、30、60 分钟三档可达半径，消除直线欧氏距离的失真。
+2. **多级性能保障**：系统内置内存缓存层与热门地标后台预加载机制，有效降低外部接口延迟，保证高频交互秒级响应。
+3. **稳健空间拓扑**：采用纯数学射线法、GeoJSON Polygon 内环孔洞排除与 MultiPolygon 分块检测，确保地点圈层归属与覆盖状态判断精确可靠。
+4. **统一坐标契约**：空间几何计算严格在原生 WGS-84 坐标系下完成；在渲染展示与外部导航跳转时，统一在边界单次转换为 GCJ-02 坐标。
 
 ---
 
-## 数据监控
+## 扩展数据
 
-项目集成 Vercel Web Analytics，追踪用户行为、API 健康状态和缓存命中率。
+### 添加预设起点
 
-详细文档：[ANALYTICS.md](./ANALYTICS.md)
-
----
-
-## 扩展地标数据
-
-在 `src/data/landmarks.ts` 中按以下格式添加新地标：
+在 `src/data/landmarks.ts` 中按以下结构添加新地标：
 
 ```typescript
 {
-  id: 'city-landmark-name',   // 唯一 ID，建议格式：城市-地标英文
+  id: 'city-landmark-name',   // 唯一 ID，格式建议：城市拼音-地标英文
   name: '地标名称',
   city: '城市',
   province: '省份',
@@ -175,37 +173,31 @@ src/
 }
 ```
 
-在 `src/data/interest-points.ts` 中可为每座城市添加兴趣点数据，用于在等时圈内展示 POI 清单。
+### 添加精选地点 (POI)
+
+在 `src/data/interest-points.ts` 中可为城市添加候选地点数据，系统将自动根据用户生成的等时圈几何进行动态圈层归属与清单展示。
 
 ---
 
-## 未来规划
+## 核心技术文档
 
-**v1.1 - 景点发现**
-- 集成高德 / 百度地图 POI 数据
-- 可达范围内的徒步景点展示与评分
-
-**v1.2 - 用户系统**
-- 用户登录（微信 / Google / GitHub）
-- 收藏自定义出发点与历史记录
-
-**v1.3 - 商业化**
-- 会员订阅
-- API 服务开放
+- 数据监控与指标口径规范：[ANALYTICS.md](./ANALYTICS.md)
+- 贡献指引与代码规范：[CONTRIBUTING.md](./CONTRIBUTING.md)
+- 历史版本迭代记录：[CHANGELOG.md](./CHANGELOG.md)
 
 ---
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request。请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+欢迎提交 Issue 和 Pull Request，共同完善城市地标与出行功能。请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ---
 
 ## 致谢
 
-- [OpenRouteService](https://openrouteservice.org/) — 路径规划与等时圈 API
-- [Leaflet](https://leafletjs.com/) — 开源地图渲染库
-- [OpenStreetMap](https://www.openstreetmap.org/) — 开源地图数据
+- [OpenRouteService](https://openrouteservice.org/) — 路径规划与等时圈计算引擎
+- [Leaflet](https://leafletjs.com/) — 轻量开源地图渲染库
+- [OpenStreetMap](https://www.openstreetmap.org/) — 开源开放地理数据
 
 ---
 

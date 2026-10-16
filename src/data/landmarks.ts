@@ -1,4 +1,4 @@
-import { CityLandmark } from '@/types';
+import type { CityLandmark } from '../types';
 
 // 城市地标数据
 export const cityLandmarks: CityLandmark[] = [
@@ -294,6 +294,64 @@ export const cityLandmarks: CityLandmark[] = [
     province: '重庆市',
     coordinates: [106.642152, 29.719235],
     description: '重庆主要航空枢纽',
+  },
+
+  // 珠海起点（继承远端 112d753 的 WGS-84 坐标）
+  {
+    id: 'zhuhai-gongbei',
+    name: '拱北口岸',
+    city: '珠海',
+    province: '广东省',
+    coordinates: [113.548925, 22.21858],
+    description: '珠海核心口岸，看附近出入境签注点',
+  },
+  {
+    id: 'zhuhai-xiangzhou-center',
+    name: '香洲体育中心',
+    city: '珠海',
+    province: '广东省',
+    coordinates: [113.53372, 22.273884],
+    description: '香洲城区，邻近市出入境管理支队',
+  },
+  {
+    id: 'zhuhai-civic-center',
+    name: '珠海市民服务中心',
+    city: '珠海',
+    province: '广东省',
+    coordinates: [113.540336, 22.283136],
+    description: '迎宾北路政务中心',
+  },
+  {
+    id: 'zhuhai-tangjiawan',
+    name: '唐家湾 / 高新区',
+    city: '珠海',
+    province: '广东省',
+    coordinates: [113.592243, 22.368625],
+    description: '高新区政务服务中心一带',
+  },
+  {
+    id: 'zhuhai-doumen',
+    name: '斗门井岸',
+    city: '珠海',
+    province: '广东省',
+    coordinates: [113.319152, 22.204438],
+    description: '斗门区行政与出入境办证中心一带',
+  },
+  {
+    id: 'zhuhai-jinwan',
+    name: '金湾市民服务中心',
+    city: '珠海',
+    province: '广东省',
+    coordinates: [113.35975, 22.118596],
+    description: '金湾三灶航空新城',
+  },
+  {
+    id: 'zhuhai-airport',
+    name: '珠海金湾机场',
+    city: '珠海',
+    province: '广东省',
+    coordinates: [113.371343, 22.010557],
+    description: '机场候机楼办证点',
   },
 ];
 

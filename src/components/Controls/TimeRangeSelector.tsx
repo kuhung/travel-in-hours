@@ -1,6 +1,6 @@
 'use client';
 
-import { isochroneColors, defaultTimeRanges } from '@/data/isochrone-config';
+import { defaultTimeRanges, getColorForRange } from '@/data/isochrone-config';
 
 interface TimeRangeSelectorProps {
   // 保持接口兼容，但不使用 interactive props
@@ -16,29 +16,19 @@ const rangeLabels: Record<number, { label: string; description: string }> = {
   60: { label: '1小时', description: '通勤圈' },
 };
 
-export default function TimeRangeSelector({ 
-  selected = defaultTimeRanges,
-}: TimeRangeSelectorProps) {
+export default function TimeRangeSelector(props: TimeRangeSelectorProps) {
+  void props;
   // 固定显示所有默认时间段
   const displayRanges = defaultTimeRanges;
-
-  const getColorForMinutes = (minutes: number) => {
-    const config = isochroneColors.find(c => c.minutes === minutes);
-    return config?.fillColor || '#86efac';
-  };
-
-  const getBorderColorForMinutes = (minutes: number) => {
-    const config = isochroneColors.find(c => c.minutes === minutes);
-    return config?.color || '#15803d';
-  };
 
   return (
     <div className="space-y-4">
       {/* 静态展示，不再作为按钮 */}
       <div className="flex gap-2">
         {displayRanges.map((range) => {
-          const fillColor = getColorForMinutes(range);
-          const borderColor = getBorderColorForMinutes(range);
+          const config = getColorForRange(range);
+          const fillColor = config.fillColor;
+          const borderColor = config.color;
           const label = rangeLabels[range] || { label: `${range}分钟`, description: '' };
           
           return (

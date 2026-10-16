@@ -1,28 +1,31 @@
 'use client';
 
-import { useState } from 'react';
-import { CityLandmark, TravelProfile } from '@/types';
-import ShareMenu from './ShareMenu';
+import type { CityLandmark, TravelProfile } from '@/types';
 
-interface ShareButtonProps {
+export interface ShareButtonProps {
   landmark: CityLandmark | null;
-  profile: TravelProfile;
-  rangeMinutes: number[];
+  profile?: TravelProfile;
+  rangeMinutes?: number[];
   hasData?: boolean;
+  selectedPOIId?: string | null;
+  onOpenShare?: () => void;
 }
 
 /**
- * 分享按钮组件
- * 用于控制面板中，显示分享按钮和下拉菜单
+ * 分享按钮组件（控制面板底部）
+ * 复用 IsochroneApp 统一的分享状态所有者与 ShareDialog，消除编辑区重复私有菜单
  */
 export default function ShareButton({ 
   landmark, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   profile, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   rangeMinutes, 
-  hasData = false 
+  hasData = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  selectedPOIId = null,
+  onOpenShare,
 }: ShareButtonProps) {
-  const [showOptions, setShowOptions] = useState(false);
-
   // 如果没有地点，显示禁用状态
   if (!landmark) {
     return (
@@ -60,11 +63,12 @@ export default function ShareButton({
   return (
     <div className="relative">
       <button 
-        onClick={() => setShowOptions(!showOptions)}
+        type="button"
+        onClick={onOpenShare}
         className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 
                    text-white text-sm font-medium hover:from-emerald-400 hover:to-teal-500 
                    transition-all flex items-center justify-center gap-2 
-                   shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+                   shadow-lg shadow-emerald-500/20 active:scale-[0.98] cursor-pointer"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -72,18 +76,6 @@ export default function ShareButton({
         </svg>
         分享可达地图
       </button>
-
-      {showOptions && (
-        <ShareMenu
-          landmark={landmark}
-          profile={profile}
-          rangeMinutes={rangeMinutes}
-          trackingLocation="share_button"
-          direction="up"
-          showCopyLink={true}
-          onClose={() => setShowOptions(false)}
-        />
-      )}
     </div>
   );
 }

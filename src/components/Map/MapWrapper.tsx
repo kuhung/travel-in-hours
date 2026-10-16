@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { CityLandmark, IsochroneFeature, TravelProfile } from '@/types';
 import { POIWithLayer } from '@/lib/poi-utils';
+import type { MapPaddingResult } from '@/lib/layout-utils';
 
 // 动态导入地图组件，完全禁用 SSR
 const IsochroneMap = dynamic(
@@ -28,6 +29,12 @@ interface MapWrapperProps {
   rangeMinutes: number[];
   onMapClick?: (lat: number, lng: number) => void;
   highlightedPOI?: number | null;
+  selectedPOIId?: string | null;
+  onSelectPOI?: (poiId: string | null) => void;
+  isPickingLocation?: boolean;
+  candidateCoordinates?: [number, number] | null;
+  mapPadding?: MapPaddingResult;
+  committedTimestamp?: number;
 }
 
 export default function MapWrapper(props: MapWrapperProps) {

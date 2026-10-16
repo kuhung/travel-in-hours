@@ -68,7 +68,7 @@ export default async function Image() {
               background: 'rgba(30, 41, 59, 0.5)',
             }}
           >
-            探索你的 1-3 小时生活圈 🚗 🚴‍♀️ 🚶
+            探索你的 1 小时生活圈 🚗 🚴 🚶
           </div>
         </div>
 

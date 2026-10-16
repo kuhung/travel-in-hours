@@ -1,21 +1,26 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { track } from '@vercel/analytics';
-import { IsochroneFeature, TravelProfile } from '@/types';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { track } from '@/lib/analytics';
+import type { IsochroneFeature, TravelProfile } from '@/types';
 import { getCachedIsochrones, setCachedIsochrones } from '@/lib/isochrone-cache';
 import { snapToGrid } from '@/lib/grid';
+import { IsochroneRequestManager, FetchIsochronesResult } from '@/lib/exploration-state';
 
-interface UseIsochronesResult {
+export type { FetchIsochronesResult };
+
+export interface UseIsochronesResult {
   isochrones: IsochroneFeature[];
   loading: boolean;
   error: string | null;
+  isEmpty: boolean;
   fromCache: boolean;
   fetchIsochrones: (
     coordinates: [number, number],
     profile: TravelProfile,
     rangeMinutes: number[]
-  ) => Promise<boolean>;
+  ) => Promise<FetchIsochronesResult>;
+  cancelRequest: () => void;
   clearIsochrones: () => void;
   clearError: () => void;
 }
@@ -24,131 +29,97 @@ export function useIsochrones(): UseIsochronesResult {
   const [isochrones, setIsochrones] = useState<IsochroneFeature[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEmpty, setIsEmpty] = useState(false);
   const [fromCache, setFromCache] = useState(false);
 
-    const fetchIsochrones = useCallback(async (
+  // 单一真实请求生命周期管理器
+  const managerRef = useRef<IsochroneRequestManager>(new IsochroneRequestManager());
+
+  // 组件卸载时可靠失效请求身份并取消在途请求
+  useEffect(() => {
+    const manager = managerRef.current;
+    return () => {
+      manager.cancel();
+    };
+  }, []);
+
+  const cancelRequest = useCallback(() => {
+    managerRef.current.cancel();
+    setLoading(false);
+  }, []);
+
+  const fetchIsochrones = useCallback(async (
     rawCoordinates: [number, number],
     profile: TravelProfile,
     rangeMinutes: number[]
-  ) => {
-    // 对齐到网格系统
-    const coordinates = snapToGrid(rawCoordinates[0], rawCoordinates[1]);
-
+  ): Promise<FetchIsochronesResult> => {
     setLoading(true);
     setError(null);
+    setIsEmpty(false);
     setFromCache(false);
 
-    // 首先检查本地缓存
-    const cached = getCachedIsochrones(coordinates, profile, rangeMinutes);
-    if (cached && cached.length > 0) {
-      setIsochrones(cached);
-      setFromCache(true);
-      setLoading(false);
-      return true;
+    const result = await managerRef.current.startRequest(
+      rawCoordinates,
+      profile,
+      rangeMinutes,
+      {
+        fetchApi: fetch,
+        getCached: getCachedIsochrones,
+        setCached: setCachedIsochrones,
+        snapCoords: snapToGrid,
+        trackEvent: track,
+      }
+    );
+
+    // 检查响应是否已被取消或被更新的请求取代：统一确保失效分支返回 success=false, aborted=true
+    if (result.aborted || !managerRef.current.isCurrent(result.requestId)) {
+      return {
+        ...result,
+        success: false,
+        aborted: true,
+      };
     }
 
-    try {
-      const response = await fetch('/api/isochrones', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          coordinates,
-          profile,
-          rangeMinutes,
-        }),
-      });
+    setLoading(false);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `请求失败: ${response.status}`;
-        
-        // 追踪 API 错误事件 - 区分不同错误类型
-        const errorType = 
-          response.status === 429 ? 'rate_limit' :
-          response.status === 403 ? 'forbidden' :
-          response.status === 401 ? 'unauthorized' :
-          response.status === 500 ? 'server_error' :
-          response.status === 503 ? 'service_unavailable' :
-          `http_${response.status}`;
-        
-        track('api_error', {
-          location: 'isochrones_hook',
-          error_type: errorType,
-          status_code: response.status,
-          profile,
-          error_message: errorMessage.substring(0, 100) // 限制长度
-        });
-        
-        // 特别追踪限流事件
-        if (response.status === 429) {
-          track('api_rate_limit_reached', {
-            location: 'isochrones_hook',
-            profile,
-            coordinates: `${coordinates[0].toFixed(4)},${coordinates[1].toFixed(4)}`
-          });
-        }
-        
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      const features = data.features || [];
-      
-      setIsochrones(features);
-      
-      // 保存到本地缓存
-      if (features.length > 0) {
-        setCachedIsochrones(coordinates, profile, rangeMinutes, features);
-      }
-      
-      // 追踪 API 调用成功
-      track('api_call_success', {
-        location: 'isochrones_hook',
-        profile,
-        range_count: rangeMinutes.length
-      });
-      
-      return true;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '获取数据失败';
-      
-      // 如果是网络错误（不是 HTTP 错误），也要追踪
-      if (!(err instanceof Error && err.message.includes('请求失败'))) {
-        track('api_network_error', {
-          location: 'isochrones_hook',
-          profile,
-          error_message: message.substring(0, 100)
-        });
-      }
-      
-      setError(message);
-      setIsochrones([]);
-      return false;
-    } finally {
-      setLoading(false);
+    if (result.success && result.features.length > 0) {
+      setIsochrones(result.features);
+      setFromCache(result.fromCache);
+      setError(null);
+      setIsEmpty(false);
+    } else if (result.isEmpty) {
+      setIsEmpty(true);
+      setError(null); // 关键：空数据保持 error 为 null，不污染错误状态
+    } else if (result.error) {
+      setError(result.error);
+      setIsEmpty(false);
+      // 关键改动：请求失败保留已有探索结果，不调用 setIsochrones([])
     }
+
+    return result;
   }, []);
 
   const clearIsochrones = useCallback(() => {
     setIsochrones([]);
     setError(null);
+    setIsEmpty(false);
     setFromCache(false);
   }, []);
 
   const clearError = useCallback(() => {
     setError(null);
+    setIsEmpty(false);
   }, []);
 
   return {
     isochrones,
     loading,
     error,
+    isEmpty,
     fromCache,
     fetchIsochrones,
+    cancelRequest,
     clearIsochrones,
     clearError,
   };
 }
-

@@ -83,17 +83,8 @@ export async function POST(request: NextRequest) {
     // 服务端事件追踪
     track(errorType, {
       location: 'api_route',
-      status_code: status,
-      error_message: message.substring(0, 100)
+      status_code: status
     });
-    
-    // 特别标记限流事件
-    if (status === 429) {
-      track('ors_daily_quota_exceeded', {
-        location: 'api_route',
-        timestamp: new Date().toISOString()
-      });
-    }
     
     return NextResponse.json(
       { error: message },
