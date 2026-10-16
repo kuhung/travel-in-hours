@@ -105,7 +105,7 @@ export default function CitySelector({
     }
     if (source === 'custom') {
       return (
-        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-orange-100 text-orange-800 rounded">
+        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-purple-100 text-purple-800 rounded">
           地图选点
         </span>
       );
@@ -126,11 +126,11 @@ export default function CitySelector({
         className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5
                    bg-gray-50 border border-gray-200
                    rounded-xl text-gray-900 hover:bg-gray-100 hover:border-gray-300 transition-all
-                   focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+                   focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -176,11 +176,11 @@ export default function CitySelector({
                 type="button"
                 onClick={handleTriggerLocation}
                 disabled={isLocating}
-                className="flex-1 py-2 px-3 bg-white hover:bg-blue-50 active:bg-blue-100 border border-gray-200 hover:border-blue-300 rounded-xl text-left text-xs font-semibold text-gray-800 transition-colors flex items-center justify-between group disabled:opacity-75 disabled:cursor-wait"
+                className="flex-1 py-2 px-3 bg-white hover:bg-emerald-50 active:bg-emerald-100 border border-gray-200 hover:border-emerald-300 rounded-xl text-left text-xs font-semibold text-gray-800 transition-colors flex items-center justify-between group disabled:opacity-75 disabled:cursor-wait"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {isLocating ? (
-                    <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
                   ) : (
                     <svg className="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -189,7 +189,7 @@ export default function CitySelector({
                   )}
                   <span className="truncate">{isLocating ? '正在定位...' : '定位当前位置'}</span>
                 </div>
-                <span className="text-[10px] font-normal text-blue-600 shrink-0">免配额</span>
+                <span className="text-[10px] font-normal text-emerald-600 shrink-0">免配额</span>
               </button>
 
               {/* 地图选点 */}
@@ -197,15 +197,15 @@ export default function CitySelector({
                 <button
                   type="button"
                   onClick={handleStartMapPickClick}
-                  className="flex-1 py-2 px-3 bg-white hover:bg-orange-50 active:bg-orange-100 border border-gray-200 hover:border-orange-300 rounded-xl text-left text-xs font-semibold text-gray-800 transition-colors flex items-center justify-between group cursor-pointer"
+                  className="flex-1 py-2 px-3 bg-white hover:bg-purple-50 active:bg-purple-100 border border-gray-200 hover:border-purple-300 rounded-xl text-left text-xs font-semibold text-gray-800 transition-colors flex items-center justify-between group cursor-pointer"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <svg className="w-3.5 h-3.5 text-orange-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                     <span className="truncate">在地图选点</span>
                   </div>
-                  <span className="text-[10px] font-normal text-orange-600 shrink-0">余{remainingQuota}次</span>
+                  <span className="text-[10px] font-normal text-purple-600 shrink-0">余{remainingQuota}次</span>
                 </button>
               )}
             </div>
@@ -232,7 +232,7 @@ export default function CitySelector({
                         <button
                           type="button"
                           onClick={handleStartMapPickClick}
-                          className="px-2 py-0.5 font-semibold text-[11px] bg-orange-600 hover:bg-orange-700 text-white rounded cursor-pointer"
+                          className="px-2 py-0.5 font-semibold text-[11px] bg-purple-600 hover:bg-purple-700 text-white rounded cursor-pointer"
                         >
                           在地图选点
                         </button>
@@ -285,7 +285,7 @@ export default function CitySelector({
                 autoFocus
                 className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200
                          rounded-xl text-gray-900 text-xs placeholder-gray-400
-                         focus:outline-none focus:border-blue-500 focus:bg-white
+                         focus:outline-none focus:border-emerald-500 focus:bg-white
                          transition-all"
               />
             </div>
@@ -297,7 +297,7 @@ export default function CitySelector({
               Object.entries(filteredLandmarks).map(([city, landmarks]) => (
                 <div key={city}>
                   <div className="sticky top-0 px-4 py-1.5 bg-gray-50/95 backdrop-blur-sm
-                                text-[11px] font-semibold text-blue-700 tracking-wider border-b border-gray-100 flex items-center justify-between">
+                                text-[11px] font-semibold text-emerald-700 tracking-wider border-b border-gray-100 flex items-center justify-between">
                     <span>{city}</span>
                     <span className="text-[10px] text-gray-400 font-normal">{landmarks.length} 个地标</span>
                   </div>
@@ -310,7 +310,7 @@ export default function CitySelector({
                         onClick={() => handleSelect(landmark)}
                         className={`w-full px-4 py-2 text-left hover:bg-gray-50
                                   transition-colors flex items-center gap-3
-                                  ${isSelected ? 'bg-blue-50/70' : ''}`}
+                                  ${isSelected ? 'bg-emerald-50/70' : ''}`}
                       >
                         <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                           <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,7 +322,7 @@ export default function CitySelector({
                           <div className="text-[10px] text-gray-500 truncate">{landmark.description}</div>
                         </div>
                         {isSelected && (
-                          <svg className="w-4 h-4 text-blue-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         )}
@@ -350,7 +350,7 @@ export default function CitySelector({
                     <button
                       type="button"
                       onClick={handleStartMapPickClick}
-                      className="px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer"
+                      className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer"
                     >
                       在地图上选点
                     </button>

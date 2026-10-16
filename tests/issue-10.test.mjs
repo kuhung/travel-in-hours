@@ -549,12 +549,12 @@ test('9. 样式单一来源与契约验证 (isochrone-config.ts 单一配置源�
   // 三档色相与线型区分；地图和导出共用同一配置。
   assert.strictEqual(isochroneColors.length, 3);
   const [style15, style30, style60] = [15, 30, 60].map(getColorForRange);
-  assert.deepEqual([style15.color, style30.color, style60.color], ['#ff4b23', '#2563eb', '#60a5fa']);
+  assert.deepEqual([style15.color, style30.color, style60.color], ['#15803d', '#a16207', '#dc2626']);
   assert.ok(style15.opacity > style30.opacity);
   assert.ok(style30.opacity > style60.opacity);
   const fullStyles = [15, 30, 60].map(getIsochroneStyle);
-  assert.deepEqual(fullStyles.map(s => s.dashArray), [undefined, undefined, undefined]);
-  assert.ok(fullStyles.every(s => s.strokeOpacity === 0.95));
+  assert.deepEqual(fullStyles.map(s => 'dashArray' in s ? s.dashArray : undefined), [undefined, undefined, undefined]);
+  assert.ok(fullStyles.every(s => s.strokeOpacity === 0.85));
 
   // 12.4 LAYER_COLOR_MAP 必须与单一事实源动态对齐
   assert.strictEqual(LAYER_COLOR_MAP[15]?.color, style15.color);
@@ -578,8 +578,8 @@ test('9. 样式单一来源与契约验证 (isochrone-config.ts 单一配置源�
   assert.strictEqual(grouped.find(g => g.layerMinutes === 60)?.color, style60.color);
 
   // 12.6 目的地样式契约：深色标记与圈层区分
-  assert.strictEqual(DESTINATION_STYLE.ink, '#111827');
-  assert.strictEqual(DESTINATION_STYLE.badgeBg, '#111827');
+  assert.strictEqual(DESTINATION_STYLE.ink, '#0f766e');
+  assert.strictEqual(DESTINATION_STYLE.badgeBg, '#0f766e');
   assert.strictEqual(DESTINATION_STYLE.badgeText, '#ffffff');
   assert.strictEqual(DESTINATION_STYLE.stroke, '#ffffff');
 });
