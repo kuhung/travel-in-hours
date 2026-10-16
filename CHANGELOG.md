@@ -2,6 +2,14 @@
 
 本项目遵循简明更新日志记录规范。
 
+## [Unreleased] - Issue #19
+
+### Fixed
+- 同一起点切换出行方式并更新结果时，按成功快照编号重建 GeoJSON 圈层及弹窗，避免复用旧几何。
+- 缓存键排序不再修改传入的时间条件；补充真实缓存与三种方式独立扣次的行为测试。
+
+核查与验证记录见 `docs/travel-in-hours-facts-2026-10-16.md`。配额规则和界面文案保持原样。
+
 ## [Unreleased] - Quality & Copy Modernization
 
 ### Removed

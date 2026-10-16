@@ -691,6 +691,7 @@ function IsochroneAppContent() {
           candidateCoordinates={candidateCoordinates}
           mapPadding={mapPadding}
           committedTimestamp={committed?.timestamp}
+          committedResultId={committed?.analysisRunId}
           locationFocus={locationFocus}
         />
       </div>

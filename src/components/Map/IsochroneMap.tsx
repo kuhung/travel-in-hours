@@ -52,6 +52,7 @@ interface IsochroneMapProps {
   candidateCoordinates?: [number, number] | null; // [lng, lat] (WGS-84)
   mapPadding?: MapPaddingResult;
   committedTimestamp?: number;
+  committedResultId?: number;
   locationFocus?: CityLandmark | null;
 }
 
@@ -69,6 +70,7 @@ export default function IsochroneMap({
   candidateCoordinates = null,
   mapPadding,
   committedTimestamp,
+  committedResultId,
   locationFocus = null,
 }: IsochroneMapProps) {
   useEffect(() => {
@@ -304,7 +306,9 @@ export default function IsochroneMap({
       {/* 渲染等时圈 - 从大到小渲染以确保小的在上面 */}
       {sortedIsochrones.map((feature, index) => (
         <GeoJSON
-          key={`isochrone-${feature.properties.value}-${index}-${landmark?.id || 'default'}`}
+          // GeoJSON.data 与 onEachFeature 仅在创建时消费；新快照必须重建图层，
+          // 同步替换几何和弹窗，同时保留 MapContainer 及用户浏览状态。
+          key={`isochrone-${committedResultId ?? committedTimestamp ?? 'initial'}-${profile}-${feature.properties.value}-${index}-${landmark?.id || 'default'}`}
           data={feature}
           style={getStyle}
           onEachFeature={onEachFeature}

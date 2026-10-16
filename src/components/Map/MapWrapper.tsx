@@ -35,6 +35,7 @@ interface MapWrapperProps {
   candidateCoordinates?: [number, number] | null;
   mapPadding?: MapPaddingResult;
   committedTimestamp?: number;
+  committedResultId?: number;
   locationFocus?: CityLandmark | null;
 }
 
